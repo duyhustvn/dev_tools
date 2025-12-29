@@ -10,3 +10,4 @@ Comment=JsonUI
 Categories=Development
 Terminal=false
 StartupNotify=true
+StartupWMClass=com.example.json_ui
