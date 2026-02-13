@@ -1,4 +1,4 @@
-package com.example.json_ui
+package com.example.dev_tools_pro_max
 
 import io.flutter.embedding.android.FlutterActivity
 

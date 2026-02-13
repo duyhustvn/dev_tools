@@ -1,4 +1,4 @@
-program=JsonUI
+program=DevToolsPromax
 
 test:
 	flutter test
@@ -15,5 +15,5 @@ run:
 install:
 	sudo cp -R build/linux/x64/release/bundle /opt/$(program)
 	sudo mkdir -p /opt/$(program)/icons
-	sudo cp icons/json.png /opt/$(program)/icons/json.png
-	cp json_ui.desktop ~/.local/share/applications/json_ui.desktop
+	sudo cp icons/icon.png /opt/$(program)/icons/icon.png
+	cp dev_tools_pro_max.desktop ~/.local/share/applications/dev_tools_pro_max.desktop

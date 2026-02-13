@@ -3,11 +3,11 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=JsonUI
-Exec=/opt/JsonUI/json_ui
-Icon=/opt/JsonUI/icons/json.png
+Name=DevToolsPromax
+Exec=/opt/DevToolsPromax/dev_tools_pro_max
+Icon=/opt/DevToolsPromax/icons/icon.png
 Comment=JsonUI
 Categories=Development
 Terminal=false
 StartupNotify=true
-StartupWMClass=com.example.json_ui
+StartupWMClass=com.example.dev_tools_pro_max
