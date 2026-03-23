@@ -162,7 +162,7 @@ class _SplitPaneState extends State<SplitPane> {
   }
 }
 
-// --- TOOL 1: JSON PRETTIFIER & VIEWER ---
+// --- TOOL 1: JSON PRETTIFIER & EDITOR ---
 class JsonTool extends StatefulWidget {
   const JsonTool({super.key});
 
@@ -172,40 +172,35 @@ class JsonTool extends StatefulWidget {
 
 class _JsonToolState extends State<JsonTool> {
   late final JsonSyntaxTextController _controller;
-  Map<String, dynamic>? _jsonMap;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    String initialText = '{\n  "tool": "JSON Viewer",\n  "status": "Active"\n}';
+    String initialText = '{\n  "tool": "JSON Editor",\n  "status": "Active"\n}';
     _controller = JsonSyntaxTextController(text: initialText);
-    _parseJson();
+    _validateJson();
   }
 
-  void _parseJson() {
+  void _validateJson() {
+    if (_controller.text.trim().isEmpty) {
+      setState(() => _errorMessage = null);
+      return;
+    }
     try {
-      final decoded = jsonDecode(_controller.text);
-      if (decoded is Map<String, dynamic>) {
-        setState(() {
-          _jsonMap = decoded;
-          _errorMessage = null;
-        });
-      } else {
-        setState(() {
-          _errorMessage = "Input must be a JSON Object {}";
-          _jsonMap = null;
-        });
-      }
+      jsonDecode(_controller.text);
+      setState(() {
+        _errorMessage = null;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = "Invalid JSON";
-        _jsonMap = null;
       });
     }
   }
 
   void _prettify() {
+    if (_controller.text.trim().isEmpty) return;
     try {
       final dynamic decoded = jsonDecode(_controller.text);
       const JsonEncoder encoder = JsonEncoder.withIndent('  ');
@@ -214,9 +209,22 @@ class _JsonToolState extends State<JsonTool> {
         _controller.text = prettyString;
         _errorMessage = null;
       });
-      _parseJson();
     } catch (e) {
       setState(() => _errorMessage = "Cannot prettify invalid JSON");
+    }
+  }
+
+  void _stringify() {
+    if (_controller.text.trim().isEmpty) return;
+    try {
+      final dynamic decoded = jsonDecode(_controller.text);
+      final String stringifiedString = jsonEncode(decoded);
+      setState(() {
+        _controller.text = stringifiedString;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      setState(() => _errorMessage = "Cannot stringify invalid JSON");
     }
   }
 
@@ -245,6 +253,11 @@ class _JsonToolState extends State<JsonTool> {
             onPressed: _copyToClipboard,
           ),
           IconButton(
+            icon: const Icon(Icons.compress), // Minify/Stringify icon
+            tooltip: "Stringify (Minify)",
+            onPressed: _stringify,
+          ),
+          IconButton(
             icon: const Icon(Icons.auto_fix_high),
             tooltip: "Prettify",
             onPressed: _prettify,
@@ -252,40 +265,11 @@ class _JsonToolState extends State<JsonTool> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SplitPane(
-        left: InputPane(
-          label: "JSON INPUT",
-          controller: _controller,
-          errorText: _errorMessage,
-          onChanged: (_) => _parseJson(),
-        ),
-        right: _jsonMap == null
-            ? const Center(child: Text("Invalid JSON", style: TextStyle(color: Colors.grey)))
-            : Container(
-                color: Colors.white,
-                child: Column(
-                  children: [
-                    const PaneHeader(title: "TREE VIEW"),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(8),
-                        child: SelectionArea(
-                          child: JsonView.map(
-                            _jsonMap!,
-                            theme: const JsonViewTheme(
-                              backgroundColor: Colors.white,
-                              keyStyle: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-                              stringStyle: TextStyle(color: Colors.orange),
-                              intStyle: TextStyle(color: Colors.green),
-                              boolStyle: TextStyle(color: Colors.purple),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      body: InputPane(
+        label: "JSON EDITOR",
+        controller: _controller,
+        errorText: _errorMessage,
+        onChanged: (_) => _validateJson(),
       ),
     );
   }
