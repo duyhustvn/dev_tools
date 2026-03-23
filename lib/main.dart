@@ -32,6 +32,7 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
     const UrlTool(),
     const TimestampTool(),
     const JwtTool(),
+    const Uint64CalcTool(),
   ];
 
   @override
@@ -66,11 +67,18 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
                 icon: Icon(Icons.verified_user),
                 label: Text('JWT'),
               ),
+              NavigationRailDestination(
+                icon: Icon(Icons.calculate),
+                label: Text('Calculator'),
+              ),
             ],
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: IndexedStack(index: _selectedIndex, children: _tools),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _tools,
+            ),
           ),
         ],
       ),
@@ -115,17 +123,17 @@ class _SplitPaneState extends State<SplitPane> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(width: leftWidth, child: widget.left),
+            SizedBox(
+              width: leftWidth,
+              child: widget.left,
+            ),
             MouseRegion(
               cursor: SystemMouseCursors.resizeColumn,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragUpdate: (details) {
                   setState(() {
-                    _ratio = (_ratio + (details.delta.dx / totalWidth)).clamp(
-                      0.2,
-                      0.8,
-                    );
+                    _ratio = (_ratio + (details.delta.dx / totalWidth)).clamp(0.2, 0.8);
                   });
                 },
                 child: Container(
@@ -144,7 +152,9 @@ class _SplitPaneState extends State<SplitPane> {
                 ),
               ),
             ),
-            Expanded(child: widget.right),
+            Expanded(
+              child: widget.right,
+            ),
           ],
         );
       },
@@ -226,10 +236,9 @@ class _JsonToolState extends State<JsonTool> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("JSON Tools"),
+        title: const Text("JSON UI"),
         elevation: 1,
         actions: [
-          // COPY BUTTON RESTORED HERE
           IconButton(
             icon: const Icon(Icons.copy),
             tooltip: "Copy Result",
@@ -251,12 +260,7 @@ class _JsonToolState extends State<JsonTool> {
           onChanged: (_) => _parseJson(),
         ),
         right: _jsonMap == null
-            ? const Center(
-                child: Text(
-                  "Invalid JSON",
-                  style: TextStyle(color: Colors.grey),
-                ),
-              )
+            ? const Center(child: Text("Invalid JSON", style: TextStyle(color: Colors.grey)))
             : Container(
                 color: Colors.white,
                 child: Column(
@@ -270,10 +274,7 @@ class _JsonToolState extends State<JsonTool> {
                             _jsonMap!,
                             theme: const JsonViewTheme(
                               backgroundColor: Colors.white,
-                              keyStyle: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              keyStyle: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
                               stringStyle: TextStyle(color: Colors.orange),
                               intStyle: TextStyle(color: Colors.green),
                               boolStyle: TextStyle(color: Colors.purple),
@@ -306,9 +307,7 @@ class _Base64ToolState extends State<Base64Tool> {
   void _encode() {
     try {
       final bytes = utf8.encode(_inputController.text);
-      final result = _isUrlSafe
-          ? base64Url.encode(bytes)
-          : base64.encode(bytes);
+      final result = _isUrlSafe ? base64Url.encode(bytes) : base64.encode(bytes);
       setState(() => _outputController.text = result);
     } catch (e) {
       setState(() => _outputController.text = "Error encoding: $e");
@@ -324,9 +323,7 @@ class _Base64ToolState extends State<Base64Tool> {
       final bytes = _isUrlSafe ? base64Url.decode(input) : base64.decode(input);
       setState(() => _outputController.text = utf8.decode(bytes));
     } catch (e) {
-      setState(
-        () => _outputController.text = "Error decoding: Invalid Base64 string",
-      );
+      setState(() => _outputController.text = "Error decoding: Invalid Base64 string");
     }
   }
 
@@ -479,22 +476,20 @@ class _TimestampToolState extends State<TimestampTool> {
   final TextEditingController _tsController = TextEditingController();
   String _result = "";
   Timer? _timer;
-
+  
   // GMT+7 Helper
   String formatGmt7(DateTime dt) {
-    // Add 7 hours to UTC to get Bangkok/Hanoi time
     final gmt7 = dt.toUtc().add(const Duration(hours: 7));
     return "${gmt7.year}-${gmt7.month.toString().padLeft(2, '0')}-${gmt7.day.toString().padLeft(2, '0')} "
-        "${gmt7.hour.toString().padLeft(2, '0')}:${gmt7.minute.toString().padLeft(2, '0')}:${gmt7.second.toString().padLeft(2, '0')}";
+           "${gmt7.hour.toString().padLeft(2, '0')}:${gmt7.minute.toString().padLeft(2, '0')}:${gmt7.second.toString().padLeft(2, '0')}";
   }
 
   @override
   void initState() {
     super.initState();
-    _tsController.text = (DateTime.now().millisecondsSinceEpoch ~/ 1000)
-        .toString();
+    _tsController.text = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
     _convert();
-
+    
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {});
     });
@@ -512,15 +507,15 @@ class _TimestampToolState extends State<TimestampTool> {
       setState(() => _result = "");
       return;
     }
-
+    
     try {
       int ts = int.parse(text);
       bool isMillis = text.length > 11;
-
-      final dt = isMillis
-          ? DateTime.fromMillisecondsSinceEpoch(ts)
+      
+      final dt = isMillis 
+          ? DateTime.fromMillisecondsSinceEpoch(ts) 
           : DateTime.fromMillisecondsSinceEpoch(ts * 1000);
-
+          
       setState(() {
         _result = "GMT+7: ${formatGmt7(dt)}\nUTC:   ${dt.toUtc()}";
       });
@@ -532,10 +527,7 @@ class _TimestampToolState extends State<TimestampTool> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Unix Timestamp Converter"),
-        elevation: 1,
-      ),
+      appBar: AppBar(title: const Text("Unix Timestamp Converter"), elevation: 1),
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
@@ -553,36 +545,23 @@ class _TimestampToolState extends State<TimestampTool> {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      "Current Time (GMT+7)",
-                      style: TextStyle(color: Colors.blueGrey),
-                    ),
+                    const Text("Current Time (GMT+7)", style: TextStyle(color: Colors.blueGrey)),
                     const SizedBox(height: 4),
                     Text(
                       formatGmt7(DateTime.now()),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
                     ),
                     const SizedBox(height: 4),
                     SelectableText(
                       "${(DateTime.now().millisecondsSinceEpoch ~/ 1000)}",
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 16,
-                      ),
+                       style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
-
-              const Text(
-                "Convert Timestamp",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              
+              const Text("Convert Timestamp", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -602,10 +581,7 @@ class _TimestampToolState extends State<TimestampTool> {
                   ElevatedButton(
                     onPressed: _convert,
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 20,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                     ),
                     child: const Text("Convert"),
                   ),
@@ -623,11 +599,7 @@ class _TimestampToolState extends State<TimestampTool> {
                   ),
                   child: SelectableText(
                     _result,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontFamily: 'monospace',
-                      height: 1.5,
-                    ),
+                    style: const TextStyle(fontSize: 18, fontFamily: 'monospace', height: 1.5),
                   ),
                 ),
             ],
@@ -649,7 +621,7 @@ class JwtTool extends StatefulWidget {
 class _JwtToolState extends State<JwtTool> {
   final TextEditingController _tokenController = TextEditingController();
   final TextEditingController _secretController = TextEditingController();
-
+  
   Map<String, dynamic>? _headerMap;
   Map<String, dynamic>? _payloadMap;
   String? _error;
@@ -683,6 +655,7 @@ class _JwtToolState extends State<JwtTool> {
       });
 
       _verifySignature(parts[0], parts[1], parts[2]);
+
     } catch (e) {
       setState(() {
         _headerMap = null;
@@ -693,11 +666,7 @@ class _JwtToolState extends State<JwtTool> {
     }
   }
 
-  void _verifySignature(
-    String headerB64,
-    String payloadB64,
-    String signatureB64,
-  ) {
+  void _verifySignature(String headerB64, String payloadB64, String signatureB64) {
     final secret = _secretController.text;
     if (secret.isEmpty) {
       setState(() => _isSignatureValid = null);
@@ -709,7 +678,7 @@ class _JwtToolState extends State<JwtTool> {
       final dataToSign = utf8.encode("$headerB64.$payloadB64");
       final digest = hmac.convert(dataToSign);
       String calculatedSig = base64Url.encode(digest.bytes).replaceAll('=', '');
-
+      
       setState(() {
         _isSignatureValid = calculatedSig == signatureB64;
       });
@@ -729,19 +698,15 @@ class _JwtToolState extends State<JwtTool> {
     if (_payloadMap == null) return const SizedBox.shrink();
 
     final List<Widget> timeWidgets = [];
-
+    
     void addTimeWidget(String key, String label, Color color) {
       if (_payloadMap!.containsKey(key)) {
         final val = _payloadMap![key];
         if (val is int) {
-          final dt = DateTime.fromMillisecondsSinceEpoch(
-            val * 1000,
-            isUtc: true,
-          ).add(const Duration(hours: 7));
-          final formatted =
-              "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} "
-              "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
-
+          final dt = DateTime.fromMillisecondsSinceEpoch(val * 1000, isUtc: true).add(const Duration(hours: 7));
+          final formatted = "${dt.year}-${dt.month.toString().padLeft(2,'0')}-${dt.day.toString().padLeft(2,'0')} "
+                            "${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}:${dt.second.toString().padLeft(2,'0')}";
+          
           timeWidgets.add(
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -753,17 +718,8 @@ class _JwtToolState extends State<JwtTool> {
               child: Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(
-                      text: "$label: ",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                    TextSpan(
-                      text: formatted,
-                      style: TextStyle(color: color),
-                    ),
+                    TextSpan(text: "$label: ", style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+                    TextSpan(text: formatted, style: TextStyle(color: color)),
                   ],
                 ),
                 style: const TextStyle(fontSize: 12),
@@ -790,15 +746,8 @@ class _JwtToolState extends State<JwtTool> {
         children: [
           const Icon(Icons.info_outline, size: 16, color: Colors.orange),
           const SizedBox(width: 8),
-          const Text(
-            "GMT+7: ",
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          ...timeWidgets,
+          const Text("GMT+7: ", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+          ...timeWidgets
         ],
       ),
     );
@@ -844,12 +793,8 @@ class _JwtToolState extends State<JwtTool> {
                             suffixIcon: _isSignatureValid == null
                                 ? null
                                 : Icon(
-                                    _isSignatureValid!
-                                        ? Icons.check_circle
-                                        : Icons.cancel,
-                                    color: _isSignatureValid!
-                                        ? Colors.green
-                                        : Colors.red,
+                                    _isSignatureValid! ? Icons.check_circle : Icons.cancel,
+                                    color: _isSignatureValid! ? Colors.green : Colors.red,
                                   ),
                           ),
                           onChanged: (_) => _processJwt(),
@@ -860,17 +805,11 @@ class _JwtToolState extends State<JwtTool> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(8),
-                        color: _isSignatureValid!
-                            ? Colors.green.shade100
-                            : Colors.red.shade100,
+                        color: _isSignatureValid! ? Colors.green.shade100 : Colors.red.shade100,
                         child: Text(
-                          _isSignatureValid!
-                              ? "Signature Verified"
-                              : "Invalid Signature",
+                          _isSignatureValid! ? "Signature Verified" : "Invalid Signature",
                           style: TextStyle(
-                            color: _isSignatureValid!
-                                ? Colors.green.shade900
-                                : Colors.red.shade900,
+                            color: _isSignatureValid! ? Colors.green.shade900 : Colors.red.shade900,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -889,68 +828,211 @@ class _JwtToolState extends State<JwtTool> {
               const PaneHeader(title: "DECODED HEADER & PAYLOAD"),
               Expanded(
                 child: _error != null
-                    ? Center(
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      )
+                    ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
                     : _headerMap == null
-                    ? const Center(
-                        child: Text(
-                          "Paste a valid token to decode",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        child: SelectionArea(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text(
-                                  "HEADER",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
+                        ? const Center(child: Text("Paste a valid token to decode", style: TextStyle(color: Colors.grey)))
+                        : SingleChildScrollView(
+                            child: SelectionArea(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Text("HEADER", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                                   ),
-                                ),
-                              ),
-                              const Divider(height: 1),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: JsonView.map(_headerMap!),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                                child: Text(
-                                  "PAYLOAD",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
+                                  const Divider(height: 1),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: JsonView.map(_headerMap!),
                                   ),
-                                ),
+                                  
+                                  const SizedBox(height: 20),
+                                  
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                                    child: Text("PAYLOAD", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  ),
+                                  const Divider(height: 1),
+                                  
+                                  _buildTimeClaims(),
+                                  const Divider(height: 1),
+                                  
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: JsonView.map(_payloadMap!),
+                                  ),
+                                ],
                               ),
-                              const Divider(height: 1),
-
-                              _buildTimeClaims(),
-                              const Divider(height: 1),
-
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: JsonView.map(_payloadMap!),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- EXPRESSION PARSER HELPER ---
+class _ExpressionParser {
+  final String expr;
+  int _pos = 0;
+
+  _ExpressionParser(this.expr);
+
+  BigInt? parse() {
+    if (expr.isEmpty) return null;
+    BigInt result = _parseE();
+    if (_pos < expr.length) {
+      throw Exception("Unexpected character at end of expression");
+    }
+    return result;
+  }
+
+  BigInt _parseE() {
+    BigInt v = _parseT();
+    while (_pos < expr.length) {
+      if (expr[_pos] == '+') {
+        _pos++;
+        v = (v + _parseT()).toUnsigned(64); // Wrap around for uint64
+      } else if (expr[_pos] == '-') {
+        _pos++;
+        v = (v - _parseT()).toUnsigned(64); // Wrap around for uint64
+      } else {
+        break;
+      }
+    }
+    return v;
+  }
+
+  BigInt _parseT() {
+    BigInt v = _parseF();
+    while (_pos < expr.length) {
+      if (expr[_pos] == '*') {
+        _pos++;
+        v = (v * _parseF()).toUnsigned(64);
+      } else if (expr[_pos] == '/') {
+        _pos++;
+        BigInt divisor = _parseF();
+        if (divisor == BigInt.zero) throw Exception("Divide by zero");
+        v = (v ~/ divisor).toUnsigned(64); // Integer division
+      } else {
+        break;
+      }
+    }
+    return v;
+  }
+
+  BigInt _parseF() {
+    if (_pos >= expr.length) throw Exception("Unexpected end of expression");
+    if (expr[_pos] == '(') {
+      _pos++;
+      BigInt v = _parseE();
+      if (_pos >= expr.length || expr[_pos] != ')') throw Exception("Missing closing parenthesis");
+      _pos++;
+      return v;
+    }
+    int start = _pos;
+    while (_pos < expr.length && RegExp(r'[0-9]').hasMatch(expr[_pos])) {
+      _pos++;
+    }
+    if (start == _pos) throw Exception("Expected number");
+    return BigInt.parse(expr.substring(start, _pos));
+  }
+}
+
+// --- TOOL 6: UINT64 CALCULATOR (EXPRESSION BASED) ---
+class Uint64CalcTool extends StatefulWidget {
+  const Uint64CalcTool({super.key});
+
+  @override
+  State<Uint64CalcTool> createState() => _Uint64CalcToolState();
+}
+
+class _Uint64CalcToolState extends State<Uint64CalcTool> {
+  final TextEditingController _exprController = TextEditingController();
+  final TextEditingController _result = TextEditingController();
+
+  void _calculate() {
+    String text = _exprController.text.trim();
+    if (text.isEmpty) {
+      setState(() => _result.text = "");
+      return;
+    }
+
+    try {
+      BigInt? res = _evaluateExpression(text);
+      if (res != null) {
+        setState(() => _result.text = res.toString());
+      } else {
+        setState(() => _result.text = "");
+      }
+    } catch (e) {
+      setState(() => _result.text = "Error: Invalid expression or syntax");
+    }
+  }
+
+  BigInt? _evaluateExpression(String expr) {
+    // Sanitize and replace user-friendly multiplication symbols
+    expr = expr.replaceAll(' ', '').replaceAll('x', '*').replaceAll('X', '*');
+    if (expr.isEmpty) return null;
+    return _ExpressionParser(expr).parse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Uint64 Calculator"), elevation: 1),
+      body: SplitPane(
+        initialRatio: 0.5,
+        left: InputPane(
+          label: "EXPRESSION (UINT64)",
+          controller: _exprController,
+          hintText: "Enter expression, e.g., (10 * 4) + 2 - 3",
+          onChanged: (_) => _calculate(),
+        ),
+        right: Column(
+          children: [
+            const PaneHeader(title: "RESULT"),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                color: Colors.grey.shade100,
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: SelectionArea(
+                    child: Text(
+                      _result.text.isEmpty ? "Waiting for expression..." : _result.text,
+                      style: TextStyle(
+                        fontFamily: 'monospace', 
+                        fontSize: 24, 
+                        fontWeight: FontWeight.bold,
+                        color: _result.text.startsWith("Error") ? Colors.red : Colors.green.shade800,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (!_result.text.startsWith("Error") && _result.text.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                color: Colors.white,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _result.text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Result copied!")),
+                    );
+                  }, 
+                  icon: const Icon(Icons.copy), 
+                  label: const Text("Copy Result")
+                ),
+              )
+          ],
         ),
       ),
     );
@@ -1052,22 +1134,19 @@ class JsonSyntaxTextController extends TextEditingController {
 
     for (final Match match in regex.allMatches(text)) {
       if (match.start > currentIndex) {
-        children.add(
-          TextSpan(
-            text: text.substring(currentIndex, match.start),
-            style: style,
-          ),
-        );
+        children.add(TextSpan(
+          text: text.substring(currentIndex, match.start),
+          style: style,
+        ));
       }
 
       final String? matchedText = match.group(0);
       TextStyle matchStyle = style;
 
-      if (match.group(1) != null) {
-        // String
+      if (match.group(1) != null) { // String
         bool isKey = false;
         int nextIndex = match.end;
-        while (nextIndex < text.length && text[nextIndex].trim().isEmpty) {
+        while(nextIndex < text.length && text[nextIndex].trim().isEmpty) {
           nextIndex++;
         }
         if (nextIndex < text.length && text[nextIndex] == ':') isKey = true;
@@ -1075,17 +1154,11 @@ class JsonSyntaxTextController extends TextEditingController {
           color: isKey ? Colors.blue[800] : Colors.orange[800],
           fontWeight: isKey ? FontWeight.bold : FontWeight.normal,
         );
-      } else if (match.group(2) != null) {
-        // Number
+      } else if (match.group(2) != null) { // Number
         matchStyle = const TextStyle(color: Colors.green);
-      } else if (match.group(3) != null) {
-        // Keyword
-        matchStyle = const TextStyle(
-          color: Colors.purple,
-          fontWeight: FontWeight.bold,
-        );
-      } else if (match.group(4) != null) {
-        // Punctuation
+      } else if (match.group(3) != null) { // Keyword
+        matchStyle = const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold);
+      } else if (match.group(4) != null) { // Punctuation
         matchStyle = const TextStyle(color: Colors.grey);
       }
 
