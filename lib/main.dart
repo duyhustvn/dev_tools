@@ -9,7 +9,7 @@ void main() {
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'DevTools Pro',
+      title: 'JSON UI',
       home: MultiToolScreen(),
     ),
   );
@@ -32,7 +32,7 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
     const UrlTool(),
     const TimestampTool(),
     const JwtTool(),
-    const Uint64CalcTool(),
+    const Uint64CalcTool(), // NEW TOOL: UINT64 CALCULATOR
   ];
 
   @override
@@ -287,27 +287,33 @@ class _Base64ToolState extends State<Base64Tool> {
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _outputController = TextEditingController();
   bool _isUrlSafe = true;
+  bool _isEncodeMode = true;
 
-  void _encode() {
-    try {
-      final bytes = utf8.encode(_inputController.text);
-      final result = _isUrlSafe ? base64Url.encode(bytes) : base64.encode(bytes);
-      setState(() => _outputController.text = result);
-    } catch (e) {
-      setState(() => _outputController.text = "Error encoding: $e");
+  void _process() {
+    if (_inputController.text.isEmpty) {
+      setState(() => _outputController.text = "");
+      return;
     }
-  }
-
-  void _decode() {
-    try {
-      String input = _inputController.text.trim();
-      while (input.length % 4 != 0) {
-        input += '=';
+    
+    if (_isEncodeMode) {
+      try {
+        final bytes = utf8.encode(_inputController.text);
+        final result = _isUrlSafe ? base64Url.encode(bytes) : base64.encode(bytes);
+        setState(() => _outputController.text = result);
+      } catch (e) {
+        setState(() => _outputController.text = "Error encoding: $e");
       }
-      final bytes = _isUrlSafe ? base64Url.decode(input) : base64.decode(input);
-      setState(() => _outputController.text = utf8.decode(bytes));
-    } catch (e) {
-      setState(() => _outputController.text = "Error decoding: Invalid Base64 string");
+    } else {
+      try {
+        String input = _inputController.text.trim();
+        while (input.length % 4 != 0) {
+          input += '=';
+        }
+        final bytes = _isUrlSafe ? base64Url.decode(input) : base64.decode(input);
+        setState(() => _outputController.text = utf8.decode(bytes));
+      } catch (e) {
+        setState(() => _outputController.text = "Error decoding: Invalid Base64 string");
+      }
     }
   }
 
@@ -323,7 +329,12 @@ class _Base64ToolState extends State<Base64Tool> {
               const Text("URL Safe"),
               Switch(
                 value: _isUrlSafe,
-                onChanged: (val) => setState(() => _isUrlSafe = val),
+                onChanged: (val) {
+                  setState(() {
+                    _isUrlSafe = val;
+                    _process();
+                  });
+                },
               ),
             ],
           ),
@@ -338,16 +349,38 @@ class _Base64ToolState extends State<Base64Tool> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.arrow_downward),
-                  label: const Text("Encode (Text → Base64)"),
-                  onPressed: _encode,
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.arrow_upward),
-                  label: const Text("Decode (Base64 → Text)"),
-                  onPressed: _decode,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<bool>(
+                      value: _isEncodeMode,
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
+                      style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                      items: const [
+                        DropdownMenuItem(
+                          value: true, 
+                          child: Row(children: [Icon(Icons.arrow_downward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Encode")])
+                        ),
+                        DropdownMenuItem(
+                          value: false, 
+                          child: Row(children: [Icon(Icons.arrow_upward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Decode")])
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _isEncodeMode = val;
+                            _process();
+                          });
+                        }
+                      },
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -358,6 +391,7 @@ class _Base64ToolState extends State<Base64Tool> {
                 label: "INPUT",
                 controller: _inputController,
                 hintText: "Enter text to encode or Base64 to decode...",
+                onChanged: (_) => _process(),
               ),
               right: InputPane(
                 label: "OUTPUT",
@@ -383,22 +417,28 @@ class UrlTool extends StatefulWidget {
 class _UrlToolState extends State<UrlTool> {
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _outputController = TextEditingController();
+  bool _isEncodeMode = true;
 
-  void _encode() {
-    try {
-      final result = Uri.encodeComponent(_inputController.text);
-      setState(() => _outputController.text = result);
-    } catch (e) {
-      setState(() => _outputController.text = "Error encoding: $e");
+  void _process() {
+    if (_inputController.text.isEmpty) {
+      setState(() => _outputController.text = "");
+      return;
     }
-  }
-
-  void _decode() {
-    try {
-      final result = Uri.decodeComponent(_inputController.text);
-      setState(() => _outputController.text = result);
-    } catch (e) {
-      setState(() => _outputController.text = "Error decoding: $e");
+    
+    if (_isEncodeMode) {
+      try {
+        final result = Uri.encodeComponent(_inputController.text);
+        setState(() => _outputController.text = result);
+      } catch (e) {
+        setState(() => _outputController.text = "Error encoding: $e");
+      }
+    } else {
+      try {
+        final result = Uri.decodeComponent(_inputController.text);
+        setState(() => _outputController.text = result);
+      } catch (e) {
+        setState(() => _outputController.text = "Error decoding: $e");
+      }
     }
   }
 
@@ -414,16 +454,38 @@ class _UrlToolState extends State<UrlTool> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.link),
-                  label: const Text("Encode"),
-                  onPressed: _encode,
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.link_off),
-                  label: const Text("Decode"),
-                  onPressed: _decode,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<bool>(
+                      value: _isEncodeMode,
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
+                      style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                      items: const [
+                        DropdownMenuItem(
+                          value: true, 
+                          child: Row(children: [Icon(Icons.arrow_downward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Encode")])
+                        ),
+                        DropdownMenuItem(
+                          value: false, 
+                          child: Row(children: [Icon(Icons.arrow_upward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Decode")])
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _isEncodeMode = val;
+                            _process();
+                          });
+                        }
+                      },
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -434,6 +496,7 @@ class _UrlToolState extends State<UrlTool> {
                 label: "INPUT",
                 controller: _inputController,
                 hintText: "Enter URL or parameters...",
+                onChanged: (_) => _process(),
               ),
               right: InputPane(
                 label: "OUTPUT",
