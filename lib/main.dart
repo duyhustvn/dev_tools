@@ -1199,9 +1199,76 @@ class JsonSyntaxTextController extends TextEditingController {
     );
 
     style ??= const TextStyle(color: Colors.black);
+    final matches = regex.allMatches(text).toList();
+
+    int highlightIndex1 = -1;
+    int highlightIndex2 = -1;
+    
+    // Lấy vị trí con trỏ hiện tại
+    int cursor = selection.baseOffset;
+
+    if (cursor >= 0) {
+      // Thu thập tất cả các ngoặc hợp lệ (không nằm trong string)
+      List<MapEntry<int, String>> brackets = [];
+      for (int i = 0; i < matches.length; i++) {
+        final m = matches[i];
+        if (m.group(4) != null) {
+          String punc = m.group(0)!;
+          if ('{}[]()'.contains(punc)) {
+            brackets.add(MapEntry(m.start, punc));
+          }
+        }
+      }
+
+      // Kiểm tra xem con trỏ có đang đứng cạnh một ngoặc nào không
+      int targetBracketIndex = -1;
+      String targetBracket = '';
+      for (int i = 0; i < brackets.length; i++) {
+        if (brackets[i].key == cursor) {
+          targetBracketIndex = i;
+          targetBracket = brackets[i].value;
+          break;
+        } else if (brackets[i].key == cursor - 1) {
+          targetBracketIndex = i;
+          targetBracket = brackets[i].value;
+        }
+      }
+
+      // Nếu đang đứng cạnh một ngoặc, đi tìm ngoặc đối xứng của nó
+      if (targetBracketIndex != -1) {
+        if ('{['.contains(targetBracket) || targetBracket == '(') {
+          int depth = 1;
+          String closeBracket = targetBracket == '{' ? '}' : (targetBracket == '[' ? ']' : ')');
+          for (int i = targetBracketIndex + 1; i < brackets.length; i++) {
+            if (brackets[i].value == targetBracket) depth++;
+            else if (brackets[i].value == closeBracket) depth--;
+            
+            if (depth == 0) {
+              highlightIndex1 = brackets[targetBracketIndex].key;
+              highlightIndex2 = brackets[i].key;
+              break;
+            }
+          }
+        } else if ('}]'.contains(targetBracket) || targetBracket == ')') {
+          int depth = 1;
+          String openBracket = targetBracket == '}' ? '{' : (targetBracket == ']' ? '[' : '(');
+          for (int i = targetBracketIndex - 1; i >= 0; i--) {
+            if (brackets[i].value == targetBracket) depth++;
+            else if (brackets[i].value == openBracket) depth--;
+            
+            if (depth == 0) {
+              highlightIndex1 = brackets[targetBracketIndex].key;
+              highlightIndex2 = brackets[i].key;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     int currentIndex = 0;
 
-    for (final Match match in regex.allMatches(text)) {
+    for (final Match match in matches) {
       if (match.start > currentIndex) {
         children.add(TextSpan(
           text: text.substring(currentIndex, match.start),
@@ -1228,7 +1295,16 @@ class JsonSyntaxTextController extends TextEditingController {
       } else if (match.group(3) != null) { // Keyword
         matchStyle = const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold);
       } else if (match.group(4) != null) { // Punctuation
-        matchStyle = const TextStyle(color: Colors.grey);
+        // Đổi màu nền (highlight) nếu là ngoặc đang được trỏ tới
+        if (match.start == highlightIndex1 || match.start == highlightIndex2) {
+          matchStyle = const TextStyle(
+            color: Colors.white,
+            backgroundColor: Colors.blueAccent,
+            fontWeight: FontWeight.bold,
+          );
+        } else {
+          matchStyle = const TextStyle(color: Colors.grey);
+        }
       }
 
       children.add(TextSpan(text: matchedText, style: matchStyle));
