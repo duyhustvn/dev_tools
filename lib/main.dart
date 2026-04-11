@@ -216,16 +216,38 @@ class _JsonToolState extends State<JsonTool> {
 
   void _stringify() {
     if (_controller.text.trim().isEmpty) return;
-    try {
-      final dynamic decoded = jsonDecode(_controller.text);
-      final String stringifiedString = jsonEncode(decoded);
-      setState(() {
-        _controller.text = stringifiedString;
-        _errorMessage = null;
-      });
-    } catch (e) {
-      setState(() => _errorMessage = "Cannot stringify invalid JSON");
+    
+    String text = _controller.text;
+    bool inQuotes = false;
+    bool escapeNext = false;
+    StringBuffer sb = StringBuffer();
+    
+    for (int i = 0; i < text.length; i++) {
+      String char = text[i];
+      
+      // Bỏ qua khoảng trắng nếu không nằm trong dấu ngoặc kép
+      if (!inQuotes) {
+        if (char == ' ' || char == '\t' || char == '\n' || char == '\r') {
+          continue;
+        }
+      }
+      
+      sb.write(char);
+      
+      // Xử lý logic đóng/mở ngoặc kép và ký tự escape (\)
+      if (escapeNext) {
+        escapeNext = false;
+      } else if (char == '\\') {
+        escapeNext = true;
+      } else if (char == '"') {
+        inQuotes = !inQuotes;
+      }
     }
+    
+    setState(() {
+      _controller.text = sb.toString();
+      _validateJson(); // Kiểm tra lại JSON sau khi minify để cập nhật thông báo lỗi nếu có
+    });
   }
 
   void _copyToClipboard() {
@@ -286,8 +308,8 @@ class Base64Tool extends StatefulWidget {
 class _Base64ToolState extends State<Base64Tool> {
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _outputController = TextEditingController();
-  bool _isUrlSafe = true;
   bool _isEncodeMode = true;
+  bool _isUrlSafe = true;
 
   void _process() {
     if (_inputController.text.isEmpty) {
