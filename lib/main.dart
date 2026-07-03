@@ -543,22 +543,74 @@ class TimestampTool extends StatefulWidget {
 
 class _TimestampToolState extends State<TimestampTool> {
   final TextEditingController _tsController = TextEditingController();
+  final TextEditingController _yearController = TextEditingController();
+  final TextEditingController _monthController = TextEditingController();
+  final TextEditingController _dayController = TextEditingController();
+  final TextEditingController _hourController = TextEditingController();
+  final TextEditingController _minuteController = TextEditingController();
+  final TextEditingController _secondController = TextEditingController();
   String _result = "";
+  String _dateResult = "";
+  int _selectedTimezoneOffset = 7;
   Timer? _timer;
-  
-  // GMT+7 Helper
-  String formatGmt7(DateTime dt) {
-    final gmt7 = dt.toUtc().add(const Duration(hours: 7));
-    return "${gmt7.year}-${gmt7.month.toString().padLeft(2, '0')}-${gmt7.day.toString().padLeft(2, '0')} "
-           "${gmt7.hour.toString().padLeft(2, '0')}:${gmt7.minute.toString().padLeft(2, '0')}:${gmt7.second.toString().padLeft(2, '0')}";
+  static const List<int> _timezoneOffsets = [
+    -12,
+    -11,
+    -10,
+    -9,
+    -8,
+    -7,
+    -6,
+    -5,
+    -4,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+  ];
+
+  String _formatTimezoneLabel(int offset) {
+    return offset >= 0 ? "GMT+$offset" : "GMT$offset";
+  }
+
+  String _formatInTimezone(DateTime dt, int offset) {
+    final shifted = dt.toUtc().add(Duration(hours: offset));
+    return "${shifted.year}-${shifted.month.toString().padLeft(2, '0')}-${shifted.day.toString().padLeft(2, '0')} "
+        "${shifted.hour.toString().padLeft(2, '0')}:${shifted.minute.toString().padLeft(2, '0')}:${shifted.second.toString().padLeft(2, '0')}";
+  }
+
+  void _setDateFields(DateTime dt) {
+    final shifted = dt.toUtc().add(Duration(hours: _selectedTimezoneOffset));
+    _yearController.text = shifted.year.toString();
+    _monthController.text = shifted.month.toString().padLeft(2, '0');
+    _dayController.text = shifted.day.toString().padLeft(2, '0');
+    _hourController.text = shifted.hour.toString().padLeft(2, '0');
+    _minuteController.text = shifted.minute.toString().padLeft(2, '0');
+    _secondController.text = shifted.second.toString().padLeft(2, '0');
   }
 
   @override
   void initState() {
     super.initState();
-    _tsController.text = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+    _tsController.text = (DateTime.now().millisecondsSinceEpoch ~/ 1000)
+        .toString();
+    _setDateFields(DateTime.now());
     _convert();
-    
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {});
     });
@@ -567,6 +619,13 @@ class _TimestampToolState extends State<TimestampTool> {
   @override
   void dispose() {
     _timer?.cancel();
+    _tsController.dispose();
+    _yearController.dispose();
+    _monthController.dispose();
+    _dayController.dispose();
+    _hourController.dispose();
+    _minuteController.dispose();
+    _secondController.dispose();
     super.dispose();
   }
 
@@ -576,102 +635,317 @@ class _TimestampToolState extends State<TimestampTool> {
       setState(() => _result = "");
       return;
     }
-    
+
     try {
       int ts = int.parse(text);
       bool isMillis = text.length > 11;
-      
-      final dt = isMillis 
-          ? DateTime.fromMillisecondsSinceEpoch(ts) 
+
+      final dt = isMillis
+          ? DateTime.fromMillisecondsSinceEpoch(ts)
           : DateTime.fromMillisecondsSinceEpoch(ts * 1000);
-          
+      final timezoneLabel = _formatTimezoneLabel(_selectedTimezoneOffset);
+
       setState(() {
-        _result = "GMT+7: ${formatGmt7(dt)}\nUTC:   ${dt.toUtc()}";
+        _result =
+            "$timezoneLabel: ${_formatInTimezone(dt, _selectedTimezoneOffset)}\nUTC:   ${dt.toUtc()}";
       });
     } catch (e) {
       setState(() => _result = "Invalid timestamp");
     }
   }
 
+  void _convertDateTimeToUnix() {
+    try {
+      final year = int.parse(_yearController.text.trim());
+      final month = int.parse(_monthController.text.trim());
+      final day = int.parse(_dayController.text.trim());
+      final hour = int.parse(_hourController.text.trim());
+      final minute = int.parse(_minuteController.text.trim());
+      final second = int.parse(_secondController.text.trim());
+
+      final localDate = DateTime.utc(year, month, day, hour, minute, second);
+      final isValidDate =
+          localDate.year == year &&
+          localDate.month == month &&
+          localDate.day == day &&
+          localDate.hour == hour &&
+          localDate.minute == minute &&
+          localDate.second == second;
+
+      if (!isValidDate) {
+        throw const FormatException("Invalid date/time");
+      }
+
+      final utcDate = DateTime.utc(
+        year,
+        month,
+        day,
+        hour - _selectedTimezoneOffset,
+        minute,
+        second,
+      );
+      final seconds = utcDate.millisecondsSinceEpoch ~/ 1000;
+      final milliseconds = utcDate.millisecondsSinceEpoch;
+      final timezoneLabel = _formatTimezoneLabel(_selectedTimezoneOffset);
+
+      setState(() {
+        _dateResult =
+            "Seconds: $seconds\n"
+            "Milliseconds: $milliseconds\n"
+            "$timezoneLabel: ${_formatInTimezone(utcDate, _selectedTimezoneOffset)}\n"
+            "UTC: ${utcDate.toIso8601String()}";
+      });
+    } catch (e) {
+      setState(() => _dateResult = "Invalid date/time");
+    }
+  }
+
+  Widget _buildDateTimeField({
+    required Key fieldKey,
+    required String label,
+    required TextEditingController controller,
+    required int maxLength,
+  }) {
+    return SizedBox(
+      width: 88,
+      child: TextField(
+        key: fieldKey,
+        controller: controller,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          labelText: label,
+          counterText: "",
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(maxLength),
+        ],
+        keyboardType: TextInputType.number,
+        onSubmitted: (_) => _convertDateTimeToUnix(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Unix Timestamp Converter"), elevation: 1),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Column(
-                  children: [
-                    const Text("Current Time (GMT+7)", style: TextStyle(color: Colors.blueGrey)),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatGmt7(DateTime.now()),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
-                    ),
-                    const SizedBox(height: 4),
-                    SelectableText(
-                      "${(DateTime.now().millisecondsSinceEpoch ~/ 1000)}",
-                       style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              const Text("Convert Timestamp", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _tsController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "Unix Timestamp (Seconds or Milliseconds)",
-                        labelText: "Timestamp",
-                      ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => _convert(),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _convert,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                    ),
-                    child: const Text("Convert"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              if (_result.isNotEmpty)
+      appBar: AppBar(
+        title: const Text("Unix Timestamp Converter"),
+        elevation: 1,
+      ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 600),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
+                    border: Border.all(color: Colors.blue.shade200),
                   ),
-                  child: SelectableText(
-                    _result,
-                    style: const TextStyle(fontSize: 18, fontFamily: 'monospace', height: 1.5),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Current Time (${_formatTimezoneLabel(_selectedTimezoneOffset)})",
+                        style: const TextStyle(color: Colors.blueGrey),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatInTimezone(
+                          DateTime.now(),
+                          _selectedTimezoneOffset,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        "${(DateTime.now().millisecondsSinceEpoch ~/ 1000)}",
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+                const SizedBox(height: 32),
+
+                const Text(
+                  "Convert Timestamp",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _tsController,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Unix Timestamp (Seconds or Milliseconds)",
+                          labelText: "Timestamp",
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => _convert(),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: _convert,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
+                      ),
+                      child: const Text("Convert"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                if (_result.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: SelectableText(
+                      _result,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'monospace',
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 32),
+                const Text(
+                  "Convert Date & Time",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  children: [
+                    _buildDateTimeField(
+                      fieldKey: const Key('date-year-field'),
+                      label: "Year",
+                      controller: _yearController,
+                      maxLength: 4,
+                    ),
+                    _buildDateTimeField(
+                      fieldKey: const Key('date-month-field'),
+                      label: "Month",
+                      controller: _monthController,
+                      maxLength: 2,
+                    ),
+                    _buildDateTimeField(
+                      fieldKey: const Key('date-day-field'),
+                      label: "Day",
+                      controller: _dayController,
+                      maxLength: 2,
+                    ),
+                    _buildDateTimeField(
+                      fieldKey: const Key('date-hour-field'),
+                      label: "Hour",
+                      controller: _hourController,
+                      maxLength: 2,
+                    ),
+                    _buildDateTimeField(
+                      fieldKey: const Key('date-minute-field'),
+                      label: "Minute",
+                      controller: _minuteController,
+                      maxLength: 2,
+                    ),
+                    _buildDateTimeField(
+                      fieldKey: const Key('date-second-field'),
+                      label: "Second",
+                      controller: _secondController,
+                      maxLength: 2,
+                    ),
+                    SizedBox(
+                      width: 152,
+                      child: DropdownButtonFormField<int>(
+                        key: const Key('date-timezone-dropdown'),
+                        initialValue: _selectedTimezoneOffset,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: "Timezone",
+                        ),
+                        items: _timezoneOffsets
+                            .map(
+                              (offset) => DropdownMenuItem<int>(
+                                value: offset,
+                                child: Text(_formatTimezoneLabel(offset)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedTimezoneOffset = value);
+                          _convert();
+                          if (_dateResult.isNotEmpty) {
+                            _convertDateTimeToUnix();
+                          }
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      key: const Key('date-to-unix-convert-button'),
+                      onPressed: _convertDateTimeToUnix,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
+                      ),
+                      child: const Text("Convert"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_dateResult.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _dateResult.startsWith("Invalid")
+                          ? Colors.red.shade50
+                          : Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _dateResult.startsWith("Invalid")
+                            ? Colors.red.shade200
+                            : Colors.green.shade200,
+                      ),
+                    ),
+                    child: SelectableText(
+                      _dateResult,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'monospace',
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
