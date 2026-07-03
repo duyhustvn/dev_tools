@@ -161,5 +161,15 @@ void main() {
       expect(_alphaAt(decoded!, 0, 0), 0);
       expect(_alphaAt(decoded, 1, 1), 255);
     });
+
+    test('throws FormatException when bytes cannot be decoded', () {
+      expect(
+        () => ImageBackgroundRemover.removeBackgroundBytes(
+          Uint8List.fromList([1, 2, 3, 4, 5]),
+          const BackgroundRemovalOptions(),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
   });
 }

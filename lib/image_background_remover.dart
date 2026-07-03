@@ -38,7 +38,13 @@ class ImageBackgroundRemover {
     Uint8List bytes,
     BackgroundRemovalOptions options,
   ) {
-    final decoded = img.decodeImage(bytes);
+    final img.Image? decoded;
+    try {
+      decoded = img.decodeImage(bytes);
+    } catch (_) {
+      throw const FormatException('Could not decode image bytes');
+    }
+
     if (decoded == null) {
       throw const FormatException('Could not decode image bytes');
     }
