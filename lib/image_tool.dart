@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dev_tools_pro_max/image_background_remover.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ImageTool extends StatefulWidget {
@@ -32,6 +33,8 @@ class _ImageToolState extends State<ImageTool> {
     if (result == null || result.files.isEmpty) {
       return;
     }
+
+    if (!mounted) return;
 
     final bytes = result.files.single.bytes;
     if (bytes == null || bytes.isEmpty) {
@@ -91,14 +94,20 @@ class _ImageToolState extends State<ImageTool> {
         .replaceAll(RegExp(r'[^\w\-.]+'), '_');
 
     try {
-      await FilePicker.saveFile(
+      final savedPath = await FilePicker.saveFile(
         dialogTitle: 'Save transparent PNG',
         fileName: '${baseName}_transparent.png',
         type: FileType.custom,
         allowedExtensions: ['png'],
         bytes: bytes,
       );
-      _showStatus('PNG export ready.');
+
+      if (!mounted) return;
+      if (savedPath == null && !kIsWeb) {
+        _showStatus('Export canceled.');
+      } else {
+        _showStatus('PNG export ready.');
+      }
     } catch (error) {
       _showStatus('Could not export PNG: $error');
     }
