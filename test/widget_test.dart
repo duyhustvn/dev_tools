@@ -54,6 +54,10 @@ void main() {
     expect(removeButton.onPressed, isNull);
     expect(exportButton.onPressed, isNull);
     expect(find.byKey(const Key('image-pick-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('image-background-mode-dropdown')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('image-tolerance-slider')), findsOneWidget);
     expect(find.byKey(const Key('image-feather-switch')), findsOneWidget);
   });
