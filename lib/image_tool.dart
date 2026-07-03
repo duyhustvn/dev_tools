@@ -4,6 +4,7 @@ import 'package:dev_tools_pro_max/image_background_remover.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 
 class ImageTool extends StatefulWidget {
   const ImageTool({super.key});
@@ -42,12 +43,25 @@ class _ImageToolState extends State<ImageTool> {
       return;
     }
 
+    if (!_canDecodeImage(bytes)) {
+      _showStatus('Could not decode selected image.');
+      return;
+    }
+
     setState(() {
       _originalBytes = bytes;
       _processedBytes = null;
       _fileName = result.files.single.name;
       _statusMessage = null;
     });
+  }
+
+  bool _canDecodeImage(Uint8List bytes) {
+    try {
+      return img.decodeImage(bytes) != null;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _removeBackground() async {
