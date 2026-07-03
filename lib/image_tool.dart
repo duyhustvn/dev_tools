@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dev_tools_pro_max/image_background_remover.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 class ImageTool extends StatefulWidget {
