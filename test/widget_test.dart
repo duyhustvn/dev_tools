@@ -44,15 +44,18 @@ void main() {
     expect(find.text('Image Tools'), findsOneWidget);
     expect(find.text('No image selected'), findsOneWidget);
 
-    final pickButton = tester.widget<ElevatedButton>(
-      find.byKey(const Key('image-pick-button')),
-    );
     final removeButton = tester.widget<ElevatedButton>(
       find.byKey(const Key('image-remove-background-button')),
     );
+    final exportButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('image-export-button')),
+    );
 
-    expect(pickButton.onPressed, isNull);
     expect(removeButton.onPressed, isNull);
+    expect(exportButton.onPressed, isNull);
+    expect(find.byKey(const Key('image-pick-button')), findsOneWidget);
+    expect(find.byKey(const Key('image-tolerance-slider')), findsOneWidget);
+    expect(find.byKey(const Key('image-feather-switch')), findsOneWidget);
   });
 
   testWidgets('converts GMT+7 date and time to Unix timestamp', (
