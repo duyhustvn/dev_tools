@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dev_tools_pro_max/image_tool.dart';
 import 'package:dev_tools_pro_max/main.dart';
 
 void main() {
@@ -32,6 +33,26 @@ void main() {
     expect(find.text('Time'), findsOneWidget);
     expect(find.text('JWT'), findsOneWidget);
     expect(find.text('Calculator'), findsOneWidget);
+    expect(find.text('Image'), findsOneWidget);
+  });
+
+  testWidgets('renders image tool empty state with disabled actions', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ImageTool()));
+
+    expect(find.text('Image Tools'), findsOneWidget);
+    expect(find.text('No image selected'), findsOneWidget);
+
+    final pickButton = tester.widget<ElevatedButton>(
+      find.byKey(const Key('image-pick-button')),
+    );
+    final removeButton = tester.widget<ElevatedButton>(
+      find.byKey(const Key('image-remove-background-button')),
+    );
+
+    expect(pickButton.onPressed, isNull);
+    expect(removeButton.onPressed, isNull);
   });
 
   testWidgets('converts GMT+7 date and time to Unix timestamp', (

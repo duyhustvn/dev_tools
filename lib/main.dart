@@ -1,6 +1,7 @@
 import 'dart:async'; // Required for Timer in TimestampTool
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:dev_tools_pro_max/image_tool.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_json_view/flutter_json_view.dart';
@@ -32,7 +33,8 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
     const UrlTool(),
     const TimestampTool(),
     const JwtTool(),
-    const Uint64CalcTool(), // NEW TOOL: UINT64 CALCULATOR
+    const Uint64CalcTool(),
+    const ImageTool(),
   ];
 
   @override
@@ -71,14 +73,15 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
                 icon: Icon(Icons.calculate),
                 label: Text('Calculator'),
               ),
+              NavigationRailDestination(
+                icon: Icon(Icons.image),
+                label: Text('Image'),
+              ),
             ],
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _tools,
-            ),
+            child: IndexedStack(index: _selectedIndex, children: _tools),
           ),
         ],
       ),
@@ -123,17 +126,17 @@ class _SplitPaneState extends State<SplitPane> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: leftWidth,
-              child: widget.left,
-            ),
+            SizedBox(width: leftWidth, child: widget.left),
             MouseRegion(
               cursor: SystemMouseCursors.resizeColumn,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragUpdate: (details) {
                   setState(() {
-                    _ratio = (_ratio + (details.delta.dx / totalWidth)).clamp(0.2, 0.8);
+                    _ratio = (_ratio + (details.delta.dx / totalWidth)).clamp(
+                      0.2,
+                      0.8,
+                    );
                   });
                 },
                 child: Container(
@@ -152,9 +155,7 @@ class _SplitPaneState extends State<SplitPane> {
                 ),
               ),
             ),
-            Expanded(
-              child: widget.right,
-            ),
+            Expanded(child: widget.right),
           ],
         );
       },
@@ -216,24 +217,24 @@ class _JsonToolState extends State<JsonTool> {
 
   void _stringify() {
     if (_controller.text.trim().isEmpty) return;
-    
+
     String text = _controller.text;
     bool inQuotes = false;
     bool escapeNext = false;
     StringBuffer sb = StringBuffer();
-    
+
     for (int i = 0; i < text.length; i++) {
       String char = text[i];
-      
+
       // Bỏ qua khoảng trắng nếu không nằm trong dấu ngoặc kép
       if (!inQuotes) {
         if (char == ' ' || char == '\t' || char == '\n' || char == '\r') {
           continue;
         }
       }
-      
+
       sb.write(char);
-      
+
       // Xử lý logic đóng/mở ngoặc kép và ký tự escape (\)
       if (escapeNext) {
         escapeNext = false;
@@ -243,7 +244,7 @@ class _JsonToolState extends State<JsonTool> {
         inQuotes = !inQuotes;
       }
     }
-    
+
     setState(() {
       _controller.text = sb.toString();
       _validateJson(); // Kiểm tra lại JSON sau khi minify để cập nhật thông báo lỗi nếu có
@@ -316,11 +317,13 @@ class _Base64ToolState extends State<Base64Tool> {
       setState(() => _outputController.text = "");
       return;
     }
-    
+
     if (_isEncodeMode) {
       try {
         final bytes = utf8.encode(_inputController.text);
-        final result = _isUrlSafe ? base64Url.encode(bytes) : base64.encode(bytes);
+        final result = _isUrlSafe
+            ? base64Url.encode(bytes)
+            : base64.encode(bytes);
         setState(() => _outputController.text = result);
       } catch (e) {
         setState(() => _outputController.text = "Error encoding: $e");
@@ -331,10 +334,15 @@ class _Base64ToolState extends State<Base64Tool> {
         while (input.length % 4 != 0) {
           input += '=';
         }
-        final bytes = _isUrlSafe ? base64Url.decode(input) : base64.decode(input);
+        final bytes = _isUrlSafe
+            ? base64Url.decode(input)
+            : base64.decode(input);
         setState(() => _outputController.text = utf8.decode(bytes));
       } catch (e) {
-        setState(() => _outputController.text = "Error decoding: Invalid Base64 string");
+        setState(
+          () =>
+              _outputController.text = "Error decoding: Invalid Base64 string",
+        );
       }
     }
   }
@@ -372,7 +380,10 @@ class _Base64ToolState extends State<Base64Tool> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -381,16 +392,43 @@ class _Base64ToolState extends State<Base64Tool> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<bool>(
                       value: _isEncodeMode,
-                      icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
-                      style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Colors.blue,
+                      ),
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                       items: const [
                         DropdownMenuItem(
-                          value: true, 
-                          child: Row(children: [Icon(Icons.arrow_downward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Encode")])
+                          value: true,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_downward,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text("Encode"),
+                            ],
+                          ),
                         ),
                         DropdownMenuItem(
-                          value: false, 
-                          child: Row(children: [Icon(Icons.arrow_upward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Decode")])
+                          value: false,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_upward,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text("Decode"),
+                            ],
+                          ),
                         ),
                       ],
                       onChanged: (val) {
@@ -446,7 +484,7 @@ class _UrlToolState extends State<UrlTool> {
       setState(() => _outputController.text = "");
       return;
     }
-    
+
     if (_isEncodeMode) {
       try {
         final result = Uri.encodeComponent(_inputController.text);
@@ -477,7 +515,10 @@ class _UrlToolState extends State<UrlTool> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -486,16 +527,43 @@ class _UrlToolState extends State<UrlTool> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<bool>(
                       value: _isEncodeMode,
-                      icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
-                      style: const TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Colors.blue,
+                      ),
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                       items: const [
                         DropdownMenuItem(
-                          value: true, 
-                          child: Row(children: [Icon(Icons.arrow_downward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Encode")])
+                          value: true,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_downward,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text("Encode"),
+                            ],
+                          ),
                         ),
                         DropdownMenuItem(
-                          value: false, 
-                          child: Row(children: [Icon(Icons.arrow_upward, color: Colors.blue, size: 20), SizedBox(width: 8), Text("Decode")])
+                          value: false,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_upward,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text("Decode"),
+                            ],
+                          ),
                         ),
                       ],
                       onChanged: (val) {
@@ -964,7 +1032,7 @@ class JwtTool extends StatefulWidget {
 class _JwtToolState extends State<JwtTool> {
   final TextEditingController _tokenController = TextEditingController();
   final TextEditingController _secretController = TextEditingController();
-  
+
   Map<String, dynamic>? _headerMap;
   Map<String, dynamic>? _payloadMap;
   String? _error;
@@ -998,7 +1066,6 @@ class _JwtToolState extends State<JwtTool> {
       });
 
       _verifySignature(parts[0], parts[1], parts[2]);
-
     } catch (e) {
       setState(() {
         _headerMap = null;
@@ -1009,7 +1076,11 @@ class _JwtToolState extends State<JwtTool> {
     }
   }
 
-  void _verifySignature(String headerB64, String payloadB64, String signatureB64) {
+  void _verifySignature(
+    String headerB64,
+    String payloadB64,
+    String signatureB64,
+  ) {
     final secret = _secretController.text;
     if (secret.isEmpty) {
       setState(() => _isSignatureValid = null);
@@ -1021,7 +1092,7 @@ class _JwtToolState extends State<JwtTool> {
       final dataToSign = utf8.encode("$headerB64.$payloadB64");
       final digest = hmac.convert(dataToSign);
       String calculatedSig = base64Url.encode(digest.bytes).replaceAll('=', '');
-      
+
       setState(() {
         _isSignatureValid = calculatedSig == signatureB64;
       });
@@ -1041,15 +1112,19 @@ class _JwtToolState extends State<JwtTool> {
     if (_payloadMap == null) return const SizedBox.shrink();
 
     final List<Widget> timeWidgets = [];
-    
+
     void addTimeWidget(String key, String label, Color color) {
       if (_payloadMap!.containsKey(key)) {
         final val = _payloadMap![key];
         if (val is int) {
-          final dt = DateTime.fromMillisecondsSinceEpoch(val * 1000, isUtc: true).add(const Duration(hours: 7));
-          final formatted = "${dt.year}-${dt.month.toString().padLeft(2,'0')}-${dt.day.toString().padLeft(2,'0')} "
-                            "${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}:${dt.second.toString().padLeft(2,'0')}";
-          
+          final dt = DateTime.fromMillisecondsSinceEpoch(
+            val * 1000,
+            isUtc: true,
+          ).add(const Duration(hours: 7));
+          final formatted =
+              "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} "
+              "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+
           timeWidgets.add(
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1061,8 +1136,17 @@ class _JwtToolState extends State<JwtTool> {
               child: Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(text: "$label: ", style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-                    TextSpan(text: formatted, style: TextStyle(color: color)),
+                    TextSpan(
+                      text: "$label: ",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    TextSpan(
+                      text: formatted,
+                      style: TextStyle(color: color),
+                    ),
                   ],
                 ),
                 style: const TextStyle(fontSize: 12),
@@ -1089,8 +1173,15 @@ class _JwtToolState extends State<JwtTool> {
         children: [
           const Icon(Icons.info_outline, size: 16, color: Colors.orange),
           const SizedBox(width: 8),
-          const Text("GMT+7: ", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-          ...timeWidgets
+          const Text(
+            "GMT+7: ",
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          ...timeWidgets,
         ],
       ),
     );
@@ -1136,8 +1227,12 @@ class _JwtToolState extends State<JwtTool> {
                             suffixIcon: _isSignatureValid == null
                                 ? null
                                 : Icon(
-                                    _isSignatureValid! ? Icons.check_circle : Icons.cancel,
-                                    color: _isSignatureValid! ? Colors.green : Colors.red,
+                                    _isSignatureValid!
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    color: _isSignatureValid!
+                                        ? Colors.green
+                                        : Colors.red,
                                   ),
                           ),
                           onChanged: (_) => _processJwt(),
@@ -1148,11 +1243,17 @@ class _JwtToolState extends State<JwtTool> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(8),
-                        color: _isSignatureValid! ? Colors.green.shade100 : Colors.red.shade100,
+                        color: _isSignatureValid!
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
                         child: Text(
-                          _isSignatureValid! ? "Signature Verified" : "Invalid Signature",
+                          _isSignatureValid!
+                              ? "Signature Verified"
+                              : "Invalid Signature",
                           style: TextStyle(
-                            color: _isSignatureValid! ? Colors.green.shade900 : Colors.red.shade900,
+                            color: _isSignatureValid!
+                                ? Colors.green.shade900
+                                : Colors.red.shade900,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -1171,43 +1272,65 @@ class _JwtToolState extends State<JwtTool> {
               const PaneHeader(title: "DECODED HEADER & PAYLOAD"),
               Expanded(
                 child: _error != null
-                    ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+                    ? Center(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
                     : _headerMap == null
-                        ? const Center(child: Text("Paste a valid token to decode", style: TextStyle(color: Colors.grey)))
-                        : SingleChildScrollView(
-                            child: SelectionArea(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text("HEADER", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    ? const Center(
+                        child: Text(
+                          "Paste a valid token to decode",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        child: SelectionArea(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text(
+                                  "HEADER",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
                                   ),
-                                  const Divider(height: 1),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: JsonView.map(_headerMap!),
-                                  ),
-                                  
-                                  const SizedBox(height: 20),
-                                  
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                                    child: Text("PAYLOAD", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                                  ),
-                                  const Divider(height: 1),
-                                  
-                                  _buildTimeClaims(),
-                                  const Divider(height: 1),
-                                  
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: JsonView.map(_payloadMap!),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: JsonView.map(_headerMap!),
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Text(
+                                  "PAYLOAD",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const Divider(height: 1),
+
+                              _buildTimeClaims(),
+                              const Divider(height: 1),
+
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: JsonView.map(_payloadMap!),
+                              ),
+                            ],
                           ),
+                        ),
+                      ),
               ),
             ],
           ),
@@ -1272,7 +1395,8 @@ class _ExpressionParser {
     if (expr[_pos] == '(') {
       _pos++;
       BigInt v = _parseE();
-      if (_pos >= expr.length || expr[_pos] != ')') throw Exception("Missing closing parenthesis");
+      if (_pos >= expr.length || expr[_pos] != ')')
+        throw Exception("Missing closing parenthesis");
       _pos++;
       return v;
     }
@@ -1346,12 +1470,16 @@ class _Uint64CalcToolState extends State<Uint64CalcTool> {
                 child: Center(
                   child: SelectionArea(
                     child: Text(
-                      _result.text.isEmpty ? "Waiting for expression..." : _result.text,
+                      _result.text.isEmpty
+                          ? "Waiting for expression..."
+                          : _result.text,
                       style: TextStyle(
-                        fontFamily: 'monospace', 
-                        fontSize: 24, 
+                        fontFamily: 'monospace',
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: _result.text.startsWith("Error") ? Colors.red : Colors.green.shade800,
+                        color: _result.text.startsWith("Error")
+                            ? Colors.red
+                            : Colors.green.shade800,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -1370,11 +1498,11 @@ class _Uint64CalcToolState extends State<Uint64CalcTool> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Result copied!")),
                     );
-                  }, 
-                  icon: const Icon(Icons.copy), 
-                  label: const Text("Copy Result")
+                  },
+                  icon: const Icon(Icons.copy),
+                  label: const Text("Copy Result"),
                 ),
-              )
+              ),
           ],
         ),
       ),
@@ -1477,7 +1605,7 @@ class JsonSyntaxTextController extends TextEditingController {
 
     int highlightIndex1 = -1;
     int highlightIndex2 = -1;
-    
+
     // Lấy vị trí con trỏ hiện tại
     int cursor = selection.baseOffset;
 
@@ -1512,11 +1640,15 @@ class JsonSyntaxTextController extends TextEditingController {
       if (targetBracketIndex != -1) {
         if ('{['.contains(targetBracket) || targetBracket == '(') {
           int depth = 1;
-          String closeBracket = targetBracket == '{' ? '}' : (targetBracket == '[' ? ']' : ')');
+          String closeBracket = targetBracket == '{'
+              ? '}'
+              : (targetBracket == '[' ? ']' : ')');
           for (int i = targetBracketIndex + 1; i < brackets.length; i++) {
-            if (brackets[i].value == targetBracket) depth++;
-            else if (brackets[i].value == closeBracket) depth--;
-            
+            if (brackets[i].value == targetBracket)
+              depth++;
+            else if (brackets[i].value == closeBracket)
+              depth--;
+
             if (depth == 0) {
               highlightIndex1 = brackets[targetBracketIndex].key;
               highlightIndex2 = brackets[i].key;
@@ -1525,11 +1657,15 @@ class JsonSyntaxTextController extends TextEditingController {
           }
         } else if ('}]'.contains(targetBracket) || targetBracket == ')') {
           int depth = 1;
-          String openBracket = targetBracket == '}' ? '{' : (targetBracket == ']' ? '[' : '(');
+          String openBracket = targetBracket == '}'
+              ? '{'
+              : (targetBracket == ']' ? '[' : '(');
           for (int i = targetBracketIndex - 1; i >= 0; i--) {
-            if (brackets[i].value == targetBracket) depth++;
-            else if (brackets[i].value == openBracket) depth--;
-            
+            if (brackets[i].value == targetBracket)
+              depth++;
+            else if (brackets[i].value == openBracket)
+              depth--;
+
             if (depth == 0) {
               highlightIndex1 = brackets[targetBracketIndex].key;
               highlightIndex2 = brackets[i].key;
@@ -1544,19 +1680,22 @@ class JsonSyntaxTextController extends TextEditingController {
 
     for (final Match match in matches) {
       if (match.start > currentIndex) {
-        children.add(TextSpan(
-          text: text.substring(currentIndex, match.start),
-          style: style,
-        ));
+        children.add(
+          TextSpan(
+            text: text.substring(currentIndex, match.start),
+            style: style,
+          ),
+        );
       }
 
       final String? matchedText = match.group(0);
       TextStyle matchStyle = style;
 
-      if (match.group(1) != null) { // String
+      if (match.group(1) != null) {
+        // String
         bool isKey = false;
         int nextIndex = match.end;
-        while(nextIndex < text.length && text[nextIndex].trim().isEmpty) {
+        while (nextIndex < text.length && text[nextIndex].trim().isEmpty) {
           nextIndex++;
         }
         if (nextIndex < text.length && text[nextIndex] == ':') isKey = true;
@@ -1564,11 +1703,17 @@ class JsonSyntaxTextController extends TextEditingController {
           color: isKey ? Colors.blue[800] : Colors.orange[800],
           fontWeight: isKey ? FontWeight.bold : FontWeight.normal,
         );
-      } else if (match.group(2) != null) { // Number
+      } else if (match.group(2) != null) {
+        // Number
         matchStyle = const TextStyle(color: Colors.green);
-      } else if (match.group(3) != null) { // Keyword
-        matchStyle = const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold);
-      } else if (match.group(4) != null) { // Punctuation
+      } else if (match.group(3) != null) {
+        // Keyword
+        matchStyle = const TextStyle(
+          color: Colors.purple,
+          fontWeight: FontWeight.bold,
+        );
+      } else if (match.group(4) != null) {
+        // Punctuation
         // Đổi màu nền (highlight) nếu là ngoặc đang được trỏ tới
         if (match.start == highlightIndex1 || match.start == highlightIndex2) {
           matchStyle = const TextStyle(
