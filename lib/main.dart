@@ -1321,9 +1321,9 @@ class _JwtToolState extends State<JwtTool> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: color.withOpacity(0.5)),
+                border: Border.all(color: color.withValues(alpha: 0.5)),
               ),
               child: Text.rich(
                 TextSpan(
@@ -1675,8 +1675,9 @@ class _ExpressionParser {
     if (expr[_pos] == '(') {
       _pos++;
       BigInt v = _parseE();
-      if (_pos >= expr.length || expr[_pos] != ')')
+      if (_pos >= expr.length || expr[_pos] != ')') {
         throw Exception("Missing closing parenthesis");
+      }
       _pos++;
       return v;
     }
@@ -1924,10 +1925,11 @@ class JsonSyntaxTextController extends TextEditingController {
               ? '}'
               : (targetBracket == '[' ? ']' : ')');
           for (int i = targetBracketIndex + 1; i < brackets.length; i++) {
-            if (brackets[i].value == targetBracket)
+            if (brackets[i].value == targetBracket) {
               depth++;
-            else if (brackets[i].value == closeBracket)
+            } else if (brackets[i].value == closeBracket) {
               depth--;
+            }
 
             if (depth == 0) {
               highlightIndex1 = brackets[targetBracketIndex].key;
@@ -1941,10 +1943,11 @@ class JsonSyntaxTextController extends TextEditingController {
               ? '{'
               : (targetBracket == ']' ? '[' : '(');
           for (int i = targetBracketIndex - 1; i >= 0; i--) {
-            if (brackets[i].value == targetBracket)
+            if (brackets[i].value == targetBracket) {
               depth++;
-            else if (brackets[i].value == openBracket)
+            } else if (brackets[i].value == openBracket) {
               depth--;
+            }
 
             if (depth == 0) {
               highlightIndex1 = brackets[targetBracketIndex].key;

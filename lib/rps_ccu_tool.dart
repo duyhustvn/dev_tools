@@ -441,7 +441,7 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
         border: Border.all(color: Colors.blue.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -671,7 +671,7 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50.withOpacity(0.4),
+              color: Colors.blue.shade50.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.blue.shade100),
             ),
@@ -734,7 +734,7 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
                   value: _formatNumber(_designCCU),
                   valueColor: Colors.red.shade800,
                   isBold: true,
-                  bgColor: Colors.blue.shade100.withOpacity(0.6),
+                  bgColor: Colors.blue.shade100.withValues(alpha: 0.6),
                 ),
               ],
             ),
@@ -905,7 +905,7 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50.withOpacity(0.4),
+              color: Colors.orange.shade50.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.orange.shade100),
             ),
