@@ -2,6 +2,7 @@ import 'dart:async'; // Required for Timer in TimestampTool
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dev_tools_pro_max/image_tool.dart';
+import 'package:dev_tools_pro_max/rps_ccu_tool.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_json_view/flutter_json_view.dart';
@@ -35,6 +36,7 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
     const JwtTool(),
     const Uint64CalcTool(),
     const ImageTool(),
+    const RpsCcuTool(),
   ];
 
   @override
@@ -76,6 +78,10 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
               NavigationRailDestination(
                 icon: Icon(Icons.image),
                 label: Text('Image'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.speed),
+                label: Text('RPS/CCU'),
               ),
             ],
           ),

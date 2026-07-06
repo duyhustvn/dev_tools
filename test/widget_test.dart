@@ -34,6 +34,23 @@ void main() {
     expect(find.text('JWT'), findsOneWidget);
     expect(find.text('Calculator'), findsOneWidget);
     expect(find.text('Image'), findsOneWidget);
+    expect(find.text('RPS/CCU'), findsOneWidget);
+  });
+
+  testWidgets('renders rps/ccu tool and calculates values', (WidgetTester tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('RPS/CCU'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Capacity Planning & k6 Generator'), findsOneWidget);
+    expect(find.text('1. Thông số đầu vào'), findsOneWidget);
+    expect(find.text('Kết quả dự kiến'), findsOneWidget);
+
+    // Initial check of default calculated values (DAU = 3,000,000 * 10% = 300,000)
+    expect(find.text('300.000'), findsOneWidget); // Daily Active Users (DAU)
+    expect(find.text('3.000.000'), findsOneWidget); // Daily requests
+    expect(find.text('1.389'), findsOneWidget); // Peak CCU
+    expect(find.text('2.778'), findsOneWidget); // Design CCU
   });
 
   testWidgets('renders image tool empty state with disabled actions', (
