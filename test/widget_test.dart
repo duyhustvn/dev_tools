@@ -53,6 +53,22 @@ void main() {
     expect(find.text('2.778'), findsOneWidget); // Design CCU
   });
 
+  testWidgets('renders rps/ccu tool and performs reverse calculations', (WidgetTester tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('RPS/CCU'));
+    await tester.pumpAndSettle();
+
+    // Click the "Tính toán ngược" tab
+    await tester.tap(find.text('Tính toán ngược (System -> Business)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1. Thông số giới hạn hệ thống'), findsOneWidget);
+    expect(find.text('Quy mô người dùng tối đa hệ thống chịu tải được'), findsOneWidget);
+
+    expect(find.text('300.240'), findsOneWidget); // DAU tối đa
+    expect(find.text('3.002.400'), findsNWidgets(2)); // Total Users tối đa & Daily requests tối đa
+  });
+
   testWidgets('renders image tool empty state with disabled actions', (
     WidgetTester tester,
   ) async {

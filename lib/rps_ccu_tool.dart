@@ -9,7 +9,9 @@ class RpsCcuTool extends StatefulWidget {
 }
 
 class _RpsCcuToolState extends State<RpsCcuTool> {
-  // Input Controllers
+  // ==========================================
+  // TAB 1: TÍNH XUÔI (Capacity Planning)
+  // ==========================================
   final TextEditingController _totalUsersController =
       TextEditingController(text: "3000000");
   final TextEditingController _requestsPerUserController =
@@ -19,12 +21,10 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
   final TextEditingController _avgResponseTimeController =
       TextEditingController(text: "10");
 
-  // Sliders State
   double _activeUserPct = 10.0;
   double _trafficPct = 80.0;
   double _timePct = 20.0;
 
-  // Output variables
   double _dau = 0.0;
   double _dailyReq = 0.0;
   double _avgRPS = 0.0;
@@ -34,26 +34,53 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
   double _peakCCU = 0.0;
   double _designCCU = 0.0;
 
-  // Formula strings
   String _expDAU = "";
   String _expTotalReq = "";
   String _expAvgRPS = "";
   String _expPeakRPS = "";
   String _expCCU = "";
-
-  // Generated K6 script
   String _k6Code = "";
+
+  // ==========================================
+  // TAB 2: TÍNH NGƯỢC (Reverse Calculation)
+  // ==========================================
+  final TextEditingController _targetRpsController =
+      TextEditingController(text: "278");
+  final TextEditingController _targetCcuController =
+      TextEditingController(text: "2778");
+  final TextEditingController _revAvgResponseTimeController =
+      TextEditingController(text: "10");
+  final TextEditingController _revSafetyMultiplierController =
+      TextEditingController(text: "2");
+  final TextEditingController _revRequestsPerUserController =
+      TextEditingController(text: "10");
+
+  double _revActiveUserPct = 10.0;
+  double _revTrafficPct = 80.0;
+  double _revTimePct = 20.0;
+
+  double _revPeakRpsLimit = 0.0;
+  double _revMaxDailyReq = 0.0;
+  double _revMaxDau = 0.0;
+  double _revMaxTotalUsers = 0.0;
+  double _revPeakCcuLimit = 0.0;
+
+  String _revExpPeakRPS = "";
+  String _revExpTotalReq = "";
+  String _revExpDAU = "";
+  String _revExpTotalUsers = "";
 
   @override
   void initState() {
     super.initState();
-    _calculate();
+    _calculateForward();
+    _calculateReverse();
 
-    // Listeners for controllers
-    _totalUsersController.addListener(_calculate);
-    _requestsPerUserController.addListener(_calculate);
-    _safetyMultiplierController.addListener(_calculate);
-    _avgResponseTimeController.addListener(_calculate);
+    // Listeners for Tab 1
+    _totalUsersController.addListener(_calculateForward);
+    _requestsPerUserController.addListener(_calculateForward);
+    _safetyMultiplierController.addListener(_calculateForward);
+    _avgResponseTimeController.addListener(_calculateForward);
   }
 
   @override
@@ -62,6 +89,11 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     _requestsPerUserController.dispose();
     _safetyMultiplierController.dispose();
     _avgResponseTimeController.dispose();
+    _targetRpsController.dispose();
+    _targetCcuController.dispose();
+    _revAvgResponseTimeController.dispose();
+    _revSafetyMultiplierController.dispose();
+    _revRequestsPerUserController.dispose();
     super.dispose();
   }
 
@@ -83,7 +115,10 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     return isNegative ? '-$formatted' : formatted;
   }
 
-  void _calculate() {
+  // ==========================================
+  // LOGIC TÍNH TOÁN XUÔI
+  // ==========================================
+  void _calculateForward() {
     final double totalUsers =
         double.tryParse(_totalUsersController.text.trim()) ?? 0.0;
     final double requestsPerUser =
@@ -93,7 +128,6 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     final double avgTime =
         double.tryParse(_avgResponseTimeController.text.trim()) ?? 0.0;
 
-    // Calculations
     final double dau = totalUsers * (_activeUserPct / 100.0);
     final double dailyReq = dau * requestsPerUser;
     const double secondsInDay = 86400.0;
@@ -107,7 +141,6 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     final double peakCCU = peakRPS * avgTime;
     final double designCCU = designRPS * avgTime;
 
-    // Generate formula texts
     final String activeUserPctStr = _activeUserPct.round().toString();
     final String trafficPctStr = _trafficPct.round().toString();
     final String timePctStr = _timePct.round().toString();
@@ -133,7 +166,6 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
       _expCCU =
           "Peak CCU = ${_formatNumber(peakRPS)} (Peak RPS) × ${avgTime.round()}s = ${_formatNumber(peakCCU)} kết nối";
 
-      // K6 Script Generation
       final int avgInt = avgRPS.round();
       final int peakInt = peakRPS.round();
       final int designInt = designRPS.round();
@@ -214,6 +246,88 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     });
   }
 
+  // ==========================================
+  // LOGIC TÍNH TOÁN NGƯỢC
+  // ==========================================
+  void _calculateReverse() {
+    final double targetRps =
+        double.tryParse(_targetRpsController.text.trim()) ?? 0.0;
+    final double avgTime =
+        double.tryParse(_revAvgResponseTimeController.text.trim()) ?? 0.0;
+    final double safety =
+        double.tryParse(_revSafetyMultiplierController.text.trim()) ?? 0.0;
+    final double requestsPerUser =
+        double.tryParse(_revRequestsPerUserController.text.trim()) ?? 0.0;
+
+    // Peak RPS Limit = Target RPS / Safety
+    final double peakRpsLimit = safety > 0 ? targetRps / safety : 0.0;
+
+    // Max Daily Requests
+    // Peak RPS = (Daily Requests * revTrafficPct/100) / (86400 * revTimePct/100)
+    // => Daily Requests = (Peak RPS * 86400 * revTimePct/100) / (revTrafficPct/100)
+    final double maxDailyReq = _revTrafficPct > 0
+        ? (peakRpsLimit * 86400.0 * (_revTimePct / 100.0)) /
+            (_revTrafficPct / 100.0)
+        : 0.0;
+
+    // Max DAU = Max Daily Requests / RequestsPerUser
+    final double maxDau = requestsPerUser > 0 ? maxDailyReq / requestsPerUser : 0.0;
+
+    // Max Total Users = Max DAU / (revActiveUserPct/100)
+    final double maxTotalUsers =
+        _revActiveUserPct > 0 ? maxDau / (_revActiveUserPct / 100.0) : 0.0;
+
+    // Peak CCU Limit = Peak RPS Limit * avgTime
+    final double peakCcuLimit = peakRpsLimit * avgTime;
+
+    final String revActiveUserPctStr = _revActiveUserPct.round().toString();
+    final String revTrafficPctStr = _revTrafficPct.round().toString();
+    final String revTimePctStr = _revTimePct.round().toString();
+
+    setState(() {
+      _revPeakRpsLimit = peakRpsLimit;
+      _revMaxDailyReq = maxDailyReq;
+      _revMaxDau = maxDau;
+      _revMaxTotalUsers = maxTotalUsers;
+      _revPeakCcuLimit = peakCcuLimit;
+
+      _revExpPeakRPS =
+          "Peak RPS giới hạn = ${_formatNumber(targetRps)} (Target RPS) / ${safety.toStringAsFixed(1)} = ${_formatNumber(peakRpsLimit)} req/s";
+      _revExpTotalReq =
+          "Tổng Request tối đa = (${_formatNumber(peakRpsLimit)} × 86.400 × $revTimePctStr%) / $revTrafficPctStr% = ${_formatNumber(maxDailyReq)} requests/ngày";
+      _revExpDAU =
+          "DAU tối đa = ${_formatNumber(maxDailyReq)} / ${requestsPerUser.round()} = ${_formatNumber(maxDau)} users";
+      _revExpTotalUsers =
+          "Tổng số Users tối đa = ${_formatNumber(maxDau)} / $revActiveUserPctStr% = ${_formatNumber(maxTotalUsers)} users";
+    });
+  }
+
+  void _onReverseRpsChanged(String val) {
+    final double rps = double.tryParse(val.trim()) ?? 0.0;
+    final double avgTime =
+        double.tryParse(_revAvgResponseTimeController.text.trim()) ?? 0.0;
+    final double ccu = rps * avgTime;
+    _targetCcuController.text = ccu.round().toString();
+    _calculateReverse();
+  }
+
+  void _onReverseCcuChanged(String val) {
+    final double ccu = double.tryParse(val.trim()) ?? 0.0;
+    final double avgTime =
+        double.tryParse(_revAvgResponseTimeController.text.trim()) ?? 0.0;
+    final double rps = avgTime > 0 ? ccu / avgTime : 0.0;
+    _targetRpsController.text = rps.toStringAsFixed(1);
+    _calculateReverse();
+  }
+
+  void _onReverseAvgTimeChanged(String val) {
+    final double avgTime = double.tryParse(val.trim()) ?? 0.0;
+    final double rps = double.tryParse(_targetRpsController.text.trim()) ?? 0.0;
+    final double ccu = rps * avgTime;
+    _targetCcuController.text = ccu.round().toString();
+    _calculateReverse();
+  }
+
   void _copyToClipboard() {
     Clipboard.setData(ClipboardData(text: _k6Code));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -249,11 +363,13 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     required TextEditingController controller,
     String? prefixText,
     String? suffixText,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
+        onChanged: onChanged,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [
           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
@@ -303,10 +419,7 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
           min: min,
           max: max,
           divisions: (max - min).round(),
-          onChanged: (val) {
-            onChanged(val);
-            _calculate();
-          },
+          onChanged: onChanged,
         ),
         const SizedBox(height: 8),
       ],
@@ -339,8 +452,9 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
         children: [
           Text(
             title,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: titleColor ?? Colors.grey.shade600,
             ),
@@ -349,7 +463,7 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
           Text(
             value,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: valueColor ?? const Color(0xFF2C3E50),
             ),
@@ -375,14 +489,17 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: isBold ? Colors.grey.shade800 : Colors.grey.shade600,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: isBold ? Colors.grey.shade800 : Colors.grey.shade600,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
             style: TextStyle(
@@ -442,12 +559,16 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
     );
   }
 
+  // ==========================================
+  // BUILD TABS
+  // ==========================================
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isWide = screenWidth > 900;
 
-    final Widget inputPanel = SingleChildScrollView(
+    // --- TAB 1 PANEL: INPUTS ---
+    final Widget forwardInputPanel = SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,7 +583,10 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
             value: _activeUserPct,
             min: 1,
             max: 100,
-            onChanged: (val) => setState(() => _activeUserPct = val),
+            onChanged: (val) {
+              setState(() => _activeUserPct = val);
+              _calculateForward();
+            },
           ),
           _buildInputField(
             label: "Số Request / User / Ngày",
@@ -473,14 +597,20 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
             value: _trafficPct,
             min: 1,
             max: 100,
-            onChanged: (val) => setState(() => _trafficPct = val),
+            onChanged: (val) {
+              setState(() => _trafficPct = val);
+              _calculateForward();
+            },
           ),
           _buildSliderField(
             label: "Quy tắc Peak Time (% thời gian)",
             value: _timePct,
             min: 1,
             max: 100,
-            onChanged: (val) => setState(() => _timePct = val),
+            onChanged: (val) {
+              setState(() => _timePct = val);
+              _calculateForward();
+            },
           ),
           Row(
             children: [
@@ -531,7 +661,8 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
       ),
     );
 
-    final Widget outputPanel = SingleChildScrollView(
+    // --- TAB 1 PANEL: OUTPUTS ---
+    final Widget forwardOutputPanel = SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,31 +806,247 @@ class _RpsCcuToolState extends State<RpsCcuTool> {
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Capacity Planning & k6 Generator"),
-        elevation: 1,
-      ),
-      body: Container(
-        color: Colors.grey.shade50,
-        child: isWide
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: inputPanel),
-                  const VerticalDivider(width: 1, thickness: 1),
-                  Expanded(child: outputPanel),
-                ],
-              )
-            : SingleChildScrollView(
-                child: Column(
-                  children: [
-                    inputPanel,
-                    const Divider(height: 1, thickness: 1),
-                    outputPanel,
-                  ],
+    // --- TAB 2 PANEL: INPUTS (Tính ngược) ---
+    final Widget reverseInputPanel = SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader("1. Thông số giới hạn hệ thống"),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  label: "Target RPS (Sức tải RPS)",
+                  controller: _targetRpsController,
+                  suffixText: "req/s",
+                  onChanged: _onReverseRpsChanged,
                 ),
               ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildInputField(
+                  label: "Target CCU (Sức tải CCU)",
+                  controller: _targetCcuController,
+                  suffixText: "kết nối",
+                  onChanged: _onReverseCcuChanged,
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  label: "Avg Response Time (giây)",
+                  controller: _revAvgResponseTimeController,
+                  suffixText: "s",
+                  onChanged: _onReverseAvgTimeChanged,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildInputField(
+                  label: "Hệ số an toàn (Safety)",
+                  controller: _revSafetyMultiplierController,
+                  onChanged: (_) => _calculateReverse(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildSectionHeader("2. Phân bổ lưu lượng của Users"),
+          _buildInputField(
+            label: "Số Request / User / Ngày",
+            controller: _revRequestsPerUserController,
+            onChanged: (_) => _calculateReverse(),
+          ),
+          _buildSliderField(
+            label: "% User Active Hàng Ngày",
+            value: _revActiveUserPct,
+            min: 1,
+            max: 100,
+            onChanged: (val) {
+              setState(() => _revActiveUserPct = val);
+              _calculateReverse();
+            },
+          ),
+          _buildSliderField(
+            label: "Quy tắc Peak Traffic (% tải)",
+            value: _revTrafficPct,
+            min: 1,
+            max: 100,
+            onChanged: (val) {
+              setState(() => _revTrafficPct = val);
+              _calculateReverse();
+            },
+          ),
+          _buildSliderField(
+            label: "Quy tắc Peak Time (% thời gian)",
+            value: _revTimePct,
+            min: 1,
+            max: 100,
+            onChanged: (val) {
+              setState(() => _revTimePct = val);
+              _calculateReverse();
+            },
+          ),
+        ],
+      ),
+    );
+
+    // --- TAB 2 PANEL: OUTPUTS (Tính ngược) ---
+    final Widget reverseOutputPanel = SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade100),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Quy mô người dùng tối đa hệ thống chịu tải được",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFC2410C),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 2.2,
+                  children: [
+                    _buildResultCard(
+                      title: "Daily Active Users (DAU) tối đa",
+                      value: _formatNumber(_revMaxDau),
+                      bgColor: Colors.white,
+                      valueColor: Colors.orange.shade900,
+                    ),
+                    _buildResultCard(
+                      title: "Tổng số Users tối đa",
+                      value: _formatNumber(_revMaxTotalUsers),
+                      bgColor: Colors.white,
+                      valueColor: Colors.red.shade800,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildRowResult(
+                  label: "Tổng Request / Ngày tối đa:",
+                  value: _formatNumber(_revMaxDailyReq),
+                  isBold: true,
+                ),
+                _buildRowResult(
+                  label: "Peak RPS giới hạn (trước Safety):",
+                  value: "${_formatNumber(_revPeakRpsLimit)} req/s",
+                  valueColor: Colors.blue.shade800,
+                ),
+                _buildRowResult(
+                  label: "Peak CCU giới hạn (trước Safety):",
+                  value: _formatNumber(_revPeakCcuLimit),
+                  valueColor: Colors.blue.shade800,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeader("3. Giải thích logic tính ngược"),
+          _buildFormulaCard(
+            "1. Xác định Peak RPS giới hạn",
+            _revExpPeakRPS,
+            Colors.blue.shade800,
+          ),
+          _buildFormulaCard(
+            "2. Tính tổng Request tối đa trong ngày",
+            _revExpTotalReq,
+            Colors.blue.shade800,
+          ),
+          _buildFormulaCard(
+            "3. Tính lượng người dùng active (DAU) tối đa",
+            _revExpDAU,
+            Colors.orange.shade800,
+          ),
+          _buildFormulaCard(
+            "4. Tính tổng lượng đăng ký Users tối đa",
+            _revExpTotalUsers,
+            Colors.red.shade800,
+          ),
+        ],
+      ),
+    );
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Capacity Planning & k6 Generator"),
+          elevation: 1,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "Tính toán xuôi (Business -> System)"),
+              Tab(text: "Tính toán ngược (System -> Business)"),
+            ],
+          ),
+        ),
+        body: Container(
+          color: Colors.grey.shade50,
+          child: TabBarView(
+            children: [
+              // Tab 1: Tính toán xuôi
+              isWide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: forwardInputPanel),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(child: forwardOutputPanel),
+                      ],
+                    )
+                  : SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          forwardInputPanel,
+                          const Divider(height: 1, thickness: 1),
+                          forwardOutputPanel,
+                        ],
+                      ),
+                    ),
+
+              // Tab 2: Tính toán ngược
+              isWide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: reverseInputPanel),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(child: reverseOutputPanel),
+                      ],
+                    )
+                  : SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          reverseInputPanel,
+                          const Divider(height: 1, thickness: 1),
+                          reverseOutputPanel,
+                        ],
+                      ),
+                    ),
+            ],
+          ),
+        ),
       ),
     );
   }
