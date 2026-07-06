@@ -5,7 +5,6 @@ import 'package:dev_tools_pro_max/image_tool.dart';
 import 'package:dev_tools_pro_max/rps_ccu_tool.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_json_view/flutter_json_view.dart';
 
 void main() {
   runApp(
@@ -1038,20 +1037,110 @@ class JwtTool extends StatefulWidget {
 class _JwtToolState extends State<JwtTool> {
   final TextEditingController _tokenController = TextEditingController();
   final TextEditingController _secretController = TextEditingController();
+  late final JsonSyntaxTextController _headerController;
+  late final JsonSyntaxTextController _payloadController;
 
-  Map<String, dynamic>? _headerMap;
   Map<String, dynamic>? _payloadMap;
   String? _error;
   bool? _isSignatureValid;
+  String? _headerError;
+  String? _payloadError;
+
+  @override
+  void initState() {
+    super.initState();
+    _headerController = JsonSyntaxTextController(text: '');
+    _payloadController = JsonSyntaxTextController(text: '');
+    _headerController.addListener(_onHeaderChanged);
+    _payloadController.addListener(_onPayloadChanged);
+
+    // Initial state with defaults
+    _secretController.text = "your-256-bit-secret";
+    _headerController.text = '{\n  "alg": "HS256",\n  "typ": "JWT"\n}';
+    _payloadController.text = '{\n  "sub": "1234567890",\n  "name": "John Doe",\n  "iat": 1516239022\n}';
+    _generateJwtSilent();
+  }
+
+  @override
+  void dispose() {
+    _headerController.removeListener(_onHeaderChanged);
+    _payloadController.removeListener(_onPayloadChanged);
+    _headerController.dispose();
+    _payloadController.dispose();
+    _tokenController.dispose();
+    _secretController.dispose();
+    super.dispose();
+  }
+
+  void _onHeaderChanged() {
+    try {
+      final text = _headerController.text;
+      if (text.trim().isEmpty) {
+        setState(() {
+          _headerError = null;
+        });
+        return;
+      }
+      final parsed = jsonDecode(text);
+      if (parsed is Map<String, dynamic>) {
+        setState(() {
+          _headerError = null;
+        });
+      } else {
+        setState(() {
+          _headerError = "Must be a JSON object";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _headerError = "Invalid JSON";
+      });
+    }
+  }
+
+  void _onPayloadChanged() {
+    try {
+      final text = _payloadController.text;
+      if (text.trim().isEmpty) {
+        setState(() {
+          _payloadMap = null;
+          _payloadError = null;
+        });
+        return;
+      }
+      final parsed = jsonDecode(text);
+      if (parsed is Map<String, dynamic>) {
+        setState(() {
+          _payloadMap = parsed;
+          _payloadError = null;
+        });
+      } else {
+        setState(() {
+          _payloadError = "Must be a JSON object";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _payloadError = "Invalid JSON";
+      });
+    }
+  }
 
   void _processJwt() {
     final token = _tokenController.text.trim();
     if (token.isEmpty) {
       setState(() {
-        _headerMap = null;
         _payloadMap = null;
+        _headerController.removeListener(_onHeaderChanged);
+        _payloadController.removeListener(_onPayloadChanged);
+        _headerController.text = "";
+        _payloadController.text = "";
+        _headerController.addListener(_onHeaderChanged);
+        _payloadController.addListener(_onPayloadChanged);
         _error = null;
         _isSignatureValid = null;
+        _headerError = null;
+        _payloadError = null;
       });
       return;
     }
@@ -1066,16 +1155,30 @@ class _JwtToolState extends State<JwtTool> {
       final payload = _decodeBase64Json(parts[1]);
 
       setState(() {
-        _headerMap = header;
         _payloadMap = payload;
+
+        _headerController.removeListener(_onHeaderChanged);
+        _payloadController.removeListener(_onPayloadChanged);
+        _headerController.text = const JsonEncoder.withIndent('  ').convert(header);
+        _payloadController.text = const JsonEncoder.withIndent('  ').convert(payload);
+        _headerController.addListener(_onHeaderChanged);
+        _payloadController.addListener(_onPayloadChanged);
+
         _error = null;
+        _headerError = null;
+        _payloadError = null;
       });
 
       _verifySignature(parts[0], parts[1], parts[2]);
     } catch (e) {
       setState(() {
-        _headerMap = null;
         _payloadMap = null;
+        _headerController.removeListener(_onHeaderChanged);
+        _payloadController.removeListener(_onPayloadChanged);
+        _headerController.text = "";
+        _payloadController.text = "";
+        _headerController.addListener(_onHeaderChanged);
+        _payloadController.addListener(_onPayloadChanged);
         _error = "Error: ${e.toString()}";
         _isSignatureValid = null;
       });
@@ -1104,6 +1207,89 @@ class _JwtToolState extends State<JwtTool> {
       });
     } catch (e) {
       setState(() => _isSignatureValid = false);
+    }
+  }
+
+  void _generateJwt() {
+    final secret = _secretController.text;
+    if (secret.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng nhập Secret Key để ký và tạo JWT mới!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final headerStr = _headerController.text.trim();
+      final headerJson = jsonDecode(headerStr);
+      final payloadStr = _payloadController.text.trim();
+      final payloadJson = jsonDecode(payloadStr);
+
+      final headerBytes = utf8.encode(jsonEncode(headerJson));
+      final payloadBytes = utf8.encode(jsonEncode(payloadJson));
+
+      final headerB64 = base64Url.encode(headerBytes).replaceAll('=', '');
+      final payloadB64 = base64Url.encode(payloadBytes).replaceAll('=', '');
+
+      final hmac = Hmac(sha256, utf8.encode(secret));
+      final dataToSign = utf8.encode("$headerB64.$payloadB64");
+      final digest = hmac.convert(dataToSign);
+      final signatureB64 = base64Url.encode(digest.bytes).replaceAll('=', '');
+
+      final newToken = "$headerB64.$payloadB64.$signatureB64";
+
+      setState(() {
+        _tokenController.text = newToken;
+        _payloadMap = payloadJson;
+        _error = null;
+        _isSignatureValid = true;
+      });
+
+      Clipboard.setData(ClipboardData(text: newToken));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("JWT mới đã được tạo và copy vào clipboard!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Lỗi tạo JWT: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _generateJwtSilent() {
+    try {
+      final headerStr = _headerController.text.trim();
+      final headerJson = jsonDecode(headerStr);
+      final payloadStr = _payloadController.text.trim();
+      final payloadJson = jsonDecode(payloadStr);
+
+      final headerBytes = utf8.encode(jsonEncode(headerJson));
+      final payloadBytes = utf8.encode(jsonEncode(payloadJson));
+
+      final headerB64 = base64Url.encode(headerBytes).replaceAll('=', '');
+      final payloadB64 = base64Url.encode(payloadBytes).replaceAll('=', '');
+
+      final secret = _secretController.text;
+      final hmac = Hmac(sha256, utf8.encode(secret));
+      final dataToSign = utf8.encode("$headerB64.$payloadB64");
+      final digest = hmac.convert(dataToSign);
+      final signatureB64 = base64Url.encode(digest.bytes).replaceAll('=', '');
+
+      _tokenController.text = "$headerB64.$payloadB64.$signatureB64";
+      _payloadMap = payloadJson;
+      _error = null;
+      _isSignatureValid = true;
+    } catch (e) {
+      _error = e.toString();
     }
   }
 
@@ -1208,6 +1394,7 @@ class _JwtToolState extends State<JwtTool> {
                 controller: _tokenController,
                 onChanged: (_) => _processJwt(),
                 hintText: "Paste JWT (ey...) here",
+                errorText: _error,
               ),
             ),
             const Divider(height: 1),
@@ -1269,6 +1456,49 @@ class _JwtToolState extends State<JwtTool> {
                 ),
               ),
             ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _generateJwt,
+                      icon: const Icon(Icons.flash_on),
+                      label: const Text("Tạo JWT mới"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: () {
+                      final token = _tokenController.text.trim();
+                      if (token.isNotEmpty) {
+                        Clipboard.setData(ClipboardData(text: token));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("JWT copied to clipboard!")),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.copy),
+                    tooltip: "Copy JWT",
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         right: Container(
@@ -1277,66 +1507,110 @@ class _JwtToolState extends State<JwtTool> {
             children: [
               const PaneHeader(title: "DECODED HEADER & PAYLOAD"),
               Expanded(
-                child: _error != null
-                    ? Center(
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      )
-                    : _headerMap == null
-                    ? const Center(
-                        child: Text(
-                          "Paste a valid token to decode",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        child: SelectionArea(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text(
-                                  "HEADER",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
-                                  ),
-                                ),
+                child: Column(
+                  children: [
+                    // Header Section Header
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      color: Colors.grey.shade200,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "HEADER: ALGORITHM & TOKEN TYPE",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (_headerError != null)
+                            Text(
+                              _headerError!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const Divider(height: 1),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: JsonView.map(_headerMap!),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                                child: Text(
-                                  "PAYLOAD",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                              const Divider(height: 1),
-
-                              _buildTimeClaims(),
-                              const Divider(height: 1),
-
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: JsonView.map(_payloadMap!),
-                              ),
-                            ],
+                            ),
+                        ],
+                      ),
+                    ),
+                    // Header Section Body
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        color: Colors.grey.shade50,
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextField(
+                          controller: _headerController,
+                          maxLines: null,
+                          minLines: null,
+                          expands: true,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: "Header JSON",
                           ),
                         ),
                       ),
+                    ),
+                    const Divider(height: 1),
+
+                    // Payload Section Header
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      color: Colors.grey.shade200,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "PAYLOAD: DATA / CLAIMS",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (_payloadError != null)
+                            Text(
+                              _payloadError!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    // Time Claims Display
+                    _buildTimeClaims(),
+                    // Payload Section Body
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        color: Colors.grey.shade50,
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextField(
+                          controller: _payloadController,
+                          maxLines: null,
+                          minLines: null,
+                          expands: true,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: "Payload JSON",
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
