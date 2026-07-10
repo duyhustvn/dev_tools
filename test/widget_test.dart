@@ -33,6 +33,7 @@ void main() {
     expect(find.text('Time'), findsOneWidget);
     expect(find.text('JWT'), findsOneWidget);
     expect(find.text('Calculator'), findsOneWidget);
+    expect(find.text('Binary'), findsOneWidget);
     expect(find.text('Image'), findsOneWidget);
     expect(find.text('RPS/CCU'), findsOneWidget);
   });
@@ -196,5 +197,35 @@ void main() {
 
     expect(find.textContaining('Seconds: 1783021021'), findsNothing);
     expect(find.textContaining('Seconds: 1783024621'), findsOneWidget);
+  });
+
+  testWidgets('renders binary tool and performs base conversions', (WidgetTester tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Binary'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Binary & Base Converter'), findsOneWidget);
+    expect(find.byKey(const Key('binary-dec-field')), findsOneWidget);
+    expect(find.byKey(const Key('binary-hex-field')), findsOneWidget);
+    expect(find.byKey(const Key('binary-bin-field')), findsOneWidget);
+
+    // Input "10" in decimal field
+    await tester.enterText(find.byKey(const Key('binary-dec-field')), '10');
+    await tester.pump();
+
+    // Verify Hex and Binary fields update
+    final hexField = tester.widget<TextField>(find.byKey(const Key('binary-hex-field')));
+    expect(hexField.controller?.text.endsWith('A'), isTrue);
+
+    final binField = tester.widget<TextField>(find.byKey(const Key('binary-bin-field')));
+    expect(binField.controller?.text.endsWith('1010'), isTrue);
+
+    // Input "FF" in hex field
+    await tester.enterText(find.byKey(const Key('binary-hex-field')), 'FF');
+    await tester.pump();
+
+    // Verify decimal updates to "255"
+    final decField = tester.widget<TextField>(find.byKey(const Key('binary-dec-field')));
+    expect(decField.controller?.text, equals('255'));
   });
 }

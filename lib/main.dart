@@ -1,6 +1,7 @@
 import 'dart:async'; // Required for Timer in TimestampTool
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:dev_tools_pro_max/binary_tool.dart';
 import 'package:dev_tools_pro_max/image_tool.dart';
 import 'package:dev_tools_pro_max/rps_ccu_tool.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,7 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
     const TimestampTool(),
     const JwtTool(),
     const Uint64CalcTool(),
+    const BinaryTool(),
     const ImageTool(),
     const RpsCcuTool(),
   ];
@@ -73,6 +75,10 @@ class _MultiToolScreenState extends State<MultiToolScreen> {
               NavigationRailDestination(
                 icon: Icon(Icons.calculate),
                 label: Text('Calculator'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.numbers),
+                label: Text('Binary'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.image),
