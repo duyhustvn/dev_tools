@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -79,3 +81,37 @@ jobs:
         with:
           name: dev_tools_linux_portable
           path: dev_tools_linux_portable.tar.gz
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dev_tools_windows_portable
+          path: ./
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dev_tools_linux_portable
+          path: ./
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dev_tools_windows_portable.zip
+            dev_tools_linux_portable.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
