@@ -39,6 +39,7 @@ jobs:
             exit 1
           }
           Write-Output "Found release directory: $releaseDir"
+          Copy-Item -Path README.md -Destination "$releaseDir\README.txt"
           Compress-Archive -Path "$releaseDir\*" -DestinationPath dev_tools_windows_portable.zip
 
       - name: Upload Windows Artifact
@@ -77,6 +78,7 @@ jobs:
           cp icons/icon.png build/linux/x64/release/bundle/icon.png
           cp setup.sh build/linux/x64/release/bundle/setup.sh
           chmod +x build/linux/x64/release/bundle/setup.sh
+          cp README.md build/linux/x64/release/bundle/README.md
 
       - name: Compress Linux Archive
         run: |
