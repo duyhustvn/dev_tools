@@ -72,6 +72,12 @@ jobs:
       - name: Build Linux Application
         run: flutter build linux --release
 
+      - name: Prepare Linux Bundle Assets
+        run: |
+          cp icons/icon.png build/linux/x64/release/bundle/icon.png
+          cp setup.sh build/linux/x64/release/bundle/setup.sh
+          chmod +x build/linux/x64/release/bundle/setup.sh
+
       - name: Compress Linux Archive
         run: |
           tar -czvf dev_tools_linux_portable.tar.gz -C build/linux/x64/release/bundle .

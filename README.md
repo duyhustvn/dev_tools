@@ -22,12 +22,15 @@ Nếu bạn tải bản portable `dev_tools_linux_portable.tar.gz` về:
    ```bash
    tar -xzvf dev_tools_linux_portable.tar.gz
    ```
-2. **Cấp quyền thực thi cho ứng dụng:** Mở terminal tại thư mục giải nén và chạy lệnh:
+2. **Thiết lập tự động (Khuyên dùng):**
+   Mở terminal tại thư mục giải nén và chạy file setup đi kèm để tự động cấp quyền, copy icon và đăng ký phím tắt (shortcut) vào App Menu của hệ thống Linux:
+   ```bash
+   ./setup.sh
+   ```
+   Sau bước này, bạn có thể khởi chạy ứng dụng trực tiếp từ App Menu hoặc thanh tìm kiếm hệ thống mà không cần mở Terminal.
+3. **Chạy thủ công (không đăng ký phím tắt):**
    ```bash
    chmod +x dev_tools_pro_max
-   ```
-3. **Khởi chạy:** Chạy ứng dụng bằng lệnh:
-   ```bash
    ./dev_tools_pro_max
    ```
 
